@@ -3,6 +3,7 @@ use super::scanner::Scanner;
 #[cfg(target_os = "linux")]
 use super::linux_scanner::LinuxScanner;
 
+/// Creates a scanner for the current OS.
 #[allow(unreachable_code)]
 pub fn create() -> Result<Box<dyn Scanner>, String> {
     #[cfg(target_os = "linux")]

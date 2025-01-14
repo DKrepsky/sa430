@@ -1,6 +1,14 @@
 use sa430::device::Device;
 use sa430::scanner::Scanner;
 
+/// Handles the scan command logic.
+///
+/// Will scan for devices using the provided scanner and print a list of devices found using the provided writer.
+///
+/// # Arguments
+/// * `scanner` - The scanner to use to find the devices.
+/// * `writer` - The writer to output the devices found.
+///
 pub fn scan(scanner: Box<dyn Scanner>, writer: &mut dyn std::io::Write) {
     let devices = scanner.scan();
     writeln!(writer, "port           | serial number    | version").unwrap();
