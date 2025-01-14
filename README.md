@@ -1,5 +1,12 @@
 # SA430 Sub-1 GHz RF Spectrum Analyzer Tool Rust Library
 
+[![CI](https://github.com/DKrepsky/sa430/actions/workflows/ci.yml/badge.svg)](https://github.com/DKrepsky/sa430/actions/workflows/ci.yml)
+![Codecov](https://img.shields.io/codecov/c/github/DKrepsky/sa430)
+[![Crates.io](https://img.shields.io/crates/v/sa430.svg)](https://crates.io/crates/sa430)
+![Crates.io Total Downloads](https://img.shields.io/crates/d/sa430)
+![GitHub License](https://img.shields.io/github/license/DKrepsky/sa430)
+
+
 ## Overview
 
 The SA430 Rust library provides a set of tools for interacting with Texas Instruments SA430 Sub-1 GHz RF spectrum analyzers. It allows users to scan, analyze, and visualize RF spectrum data. This library is designed to be used in both command-line applications and as a dependency in other Rust projects.
