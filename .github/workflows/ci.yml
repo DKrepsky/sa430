@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-2019]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Update Rust
+        run: rustup update stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-test-${{ matrix.os }}-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Install libudev
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y libudev-dev
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Run documentation tests
+        run: cargo test --doc
+
+  lint:
+    name: Check lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Update Rust
+        run: rustup update stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-test-${{ matrix.os }}-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Lint
+        run: cargo clippy --all-targets --all-features
+
+  format:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Update Rust
+        run: rustup update stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: cargo-test-${{ matrix.os }}-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Check formatting
+        run: cargo fmt -- --check
