@@ -2,6 +2,13 @@
 name = "sa430"
 version = "0.1.0"
 edition = "2021"
+authors = ["David Krepsky"]
+description = "A library for the SA430 Sub 1GHz Spectrum Analyzer, from Texas Instruments"
+keywords = ["sa430", "spectrum", "analyzer", "ti"]
+categories = ["hardware-support", "command-line-utilities"]
+license = "MIT"
+repository = "https://github.com/DKrepsky/sa430"
+readme = "README.md"
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 udev = "0.9.1"
