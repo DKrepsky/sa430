@@ -1,3 +1,9 @@
+//! # SA430 Crate
+//!
+//! This crate provides functionality to interact with SA430 SA430 Sub-1 GHz RF Spectrum Analyzer
+//! from [Texas Instruments](https://www.ti.com/). It includes modules for scanning devices, handling
+//! commands, capturing data, and more.
+
 /// This module contains the core components for the scanning functionality.
 ///
 /// A [Scanner](trait.Scanner.html) will search for USB devices connected to the computer with
