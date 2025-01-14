@@ -24,6 +24,12 @@ impl LinuxScanner {
     }
 }
 
+impl Default for LinuxScanner {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Scanner for LinuxScanner {
     fn scan(&self) -> Vec<Device> {
         return self
