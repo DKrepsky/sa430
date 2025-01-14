@@ -3,7 +3,7 @@ mod commands;
 use clap::{Parser, Subcommand};
 use commands::scan::scan;
 
-use sa430::scanner_factory;
+use sa430::scan::scanner_factory::ScannerFactory;
 
 #[derive(Parser)]
 #[command(version)]
@@ -24,7 +24,7 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Commands::Scan {}) => scan(scanner_factory::create().unwrap(), &mut std::io::stdout()),
+        Some(Commands::Scan {}) => scan(ScannerFactory::create().unwrap(), &mut std::io::stdout()),
         None => panic!("No command provided, use --help for usage"),
     }
 }

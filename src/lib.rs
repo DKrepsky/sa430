@@ -1,5 +1,2 @@
-pub mod scanner;
-pub mod scanner_factory;
+pub mod scan;
 
-#[cfg(target_os = "linux")]
-pub(crate) mod linux_scanner;

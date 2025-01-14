@@ -1,4 +1,5 @@
-use sa430::scanner::*;
+use sa430::scan::device::*;
+use sa430::scan::scanner::*;
 
 /// Handles the scan command logic.
 ///

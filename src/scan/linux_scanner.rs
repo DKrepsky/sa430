@@ -1,3 +1,4 @@
+use super::device::*;
 use super::scanner::*;
 
 use udev::Enumerator;
