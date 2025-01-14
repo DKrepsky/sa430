@@ -6,6 +6,7 @@ pub trait Scanner {
     fn scan(&self) -> Vec<Device>;
 }
 
+#[derive(Default)]
 pub struct LinuxScanner;
 
 impl LinuxScanner {
@@ -21,12 +22,6 @@ impl LinuxScanner {
             .expect("Failed to match tty subsystem");
 
         enumerator
-    }
-}
-
-impl Default for LinuxScanner {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -84,6 +79,7 @@ fn version_of(device: &udev::Device) -> &str {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn should_scan_without_panicking() {
     let scanner = LinuxScanner::new();
     scanner.scan();

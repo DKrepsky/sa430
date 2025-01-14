@@ -1,9 +1,44 @@
 # SA430 Sub-1 GHz RF Spectrum Analyzer Tool Rust Library
 
+## Overview
+
+The SA430 Rust library provides a set of tools for interacting with Texas Instruments SA430 Sub-1 GHz RF spectrum analyzers. It allows users to scan, analyze, and visualize RF spectrum data. This library is designed to be used in both command-line applications and as a dependency in other Rust projects.
+
+## Supported Operational Systems
+
+Most functionalities works on all platforms, except the scan, which at the time only support unix based systems that are libudev compatible.
+
+## Installation
+
+### Standalone CLI Application
+
+Install the dependencies (Linux Only):
+```bash
+sudo apt install libudev-dev
+```
+
+You can use cargo to install the application:
+
+```bash
+cargo install sa430
+```
+
+Then run the [commands](#commands), for example:
+```bash
+sa430 scan
+```
+
+### Library in Other Rust Projects
+
+Add the project dependency:
+```bash
+cargo add sa430
+```
+
+Checkout the [examples](examples/) folder for usage.
 
 
-## Command line features
+## CLI Usage
 
-- `list`: List all available spectrum analyzers
-- `info -p <PORT>`: Show device information
-- `blink -p <PORT>`: Blink the led
+- `scan`: List all connected spectrum analyzers.
+
