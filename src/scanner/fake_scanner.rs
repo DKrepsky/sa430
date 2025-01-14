@@ -14,11 +14,6 @@ impl FakeScanner {
         ];
         FakeScanner { vec }
     }
-
-    #[allow(dead_code)]
-    pub fn new_empty() -> Self {
-        FakeScanner { vec: vec![] }
-    }
 }
 
 impl Scanner for FakeScanner {
