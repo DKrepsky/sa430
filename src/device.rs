@@ -1,3 +1,6 @@
+pub const USB_VENDOR_ID: &str = "2047";
+pub const USB_PRODUCT_ID: &str = "0005";
+
 #[derive(Debug, Clone)]
 pub struct Device {
     port: Box<str>,

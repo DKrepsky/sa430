@@ -1,6 +1,10 @@
+use super::device;
 use super::device::Device;
-use super::scanner::Scanner;
 use udev::Enumerator;
+
+pub trait Scanner {
+    fn scan(&self) -> Vec<Device>;
+}
 
 pub struct LinuxScanner;
 
@@ -35,7 +39,7 @@ impl Scanner for LinuxScanner {
 fn is_sa430(device: &udev::Device) -> bool {
     if let Some(vendor_id) = device.property_value("ID_VENDOR_ID") {
         if let Some(product_id) = device.property_value("ID_MODEL_ID") {
-            return vendor_id == super::USB_VENDOR_ID && product_id == super::USB_PRODUCT_ID;
+            return vendor_id == device::USB_VENDOR_ID && product_id == device::USB_PRODUCT_ID;
         }
     }
     false
