@@ -12,6 +12,6 @@ impl ScannerFactory {
         #[cfg(target_os = "linux")]
         return Ok(Box::new(LinuxScanner::new()));
 
-        return Err("No scanner for current OS".to_string());
+        Err("No scanner for current OS".to_string())
     }
 }
