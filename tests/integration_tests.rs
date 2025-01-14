@@ -17,8 +17,21 @@ fn given_no_arguments_are_provided_then_return_an_error() -> Result<(), Box<dyn 
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn when_scan_then_list_devices() -> Result<(), Box<dyn std::error::Error>> {
     Command::cargo_bin(BIN_NAME)?.arg("scan").assert().success();
+
+    Ok(())
+}
+
+#[test]
+#[cfg(not(target_os = "linux"))]
+fn when_scan_then_return_error() -> Result<(), Box<dyn std::error::Error>> {
+    Command::cargo_bin(BIN_NAME)?
+        .arg("scan")
+        .assert()
+        .failure()
+        .stderr(contains("No scanner for current OS"));
 
     Ok(())
 }
