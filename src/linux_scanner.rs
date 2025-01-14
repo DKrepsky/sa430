@@ -1,4 +1,3 @@
-use super::device::*;
 use super::scanner::*;
 
 use udev::Enumerator;
@@ -29,7 +28,7 @@ impl Scanner for LinuxScanner {
             .scan_devices()
             .expect("Failed to scan devices")
             .filter(is_sa430)
-            .map(to_device)
+            .map(from_udev_to_device)
             .collect();
     }
 }
@@ -43,7 +42,7 @@ fn is_sa430(device: &udev::Device) -> bool {
     false
 }
 
-fn to_device(device: udev::Device) -> Device {
+fn from_udev_to_device(device: udev::Device) -> Device {
     Device::new(
         port_of(&device),
         serial_number_of(&device),
