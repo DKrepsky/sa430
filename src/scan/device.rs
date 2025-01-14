@@ -2,7 +2,7 @@ pub const USB_VENDOR_ID: &str = "2047";
 pub const USB_PRODUCT_ID: &str = "0005";
 
 /// A device represents a SA430 connected to the computer.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Device {
     port: Box<str>,
     serial: Box<str>,
