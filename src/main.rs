@@ -5,9 +5,9 @@ use commands::scan::scan;
 
 use sa430::scanner_factory;
 
-/// Sa430 Command Line Interface Utility
 #[derive(Parser)]
 #[command(version)]
+#[command(about = "Sa430 Command Line Interface Utility")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -15,7 +15,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Scan for connected SA430 devices
+    #[command(about = "Scan for connected SA430 devices123")]
+    #[command(short_flag = 's')]
     Scan {},
 }
 
