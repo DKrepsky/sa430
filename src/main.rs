@@ -1,9 +1,9 @@
 mod commands;
 
 use clap::{Parser, Subcommand};
-use commands::scan::scan;
+use commands::scan;
 
-use sa430::scan::scanner_factory::ScannerFactory;
+use sa430::scan::ScannerFactory;
 
 #[derive(Parser)]
 #[command(version)]

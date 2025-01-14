@@ -1,10 +1,7 @@
-use super::device::*;
-use super::scanner::*;
-
 use udev::Enumerator;
 
 #[derive(Default)]
-pub struct LinuxScanner;
+pub(crate) struct LinuxScanner;
 
 impl LinuxScanner {
     pub fn new() -> Self {
@@ -73,15 +70,4 @@ fn version_of(device: &udev::Device) -> &str {
         .expect("Version not found")
         .to_str()
         .expect("Version does not contain valid UTF-8 string")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn should_scan_without_panicking() {
-        let scanner = LinuxScanner::new();
-        scanner.scan();
-    }
 }

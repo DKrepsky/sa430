@@ -1,1 +1,5 @@
-pub mod scan;
+include!("scan.rs");
+
+
+#[cfg(test)]
+mod tests;
