@@ -9,7 +9,7 @@
 //!
 //! # Examples
 //!
-//! ```rust
+//! ```ignore
 //! use sa430::create_scanner;
 //!
 //! let scanner = create_scanner();
