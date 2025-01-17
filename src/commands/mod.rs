@@ -1,4 +1,2 @@
-include!("scan.rs");
-
-#[cfg(test)]
-mod tests;
+pub mod scan;
+pub mod watch;

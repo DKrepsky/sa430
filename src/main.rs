@@ -1,9 +1,15 @@
 mod commands;
 
-use clap::{Parser, Subcommand};
-use commands::scan;
+use std::cell::RefCell;
+use std::io::Write;
+use std::rc::Rc;
 
-use sa430::scan::ScannerFactory;
+use clap::{Parser, Subcommand};
+use commands::scan::scan;
+use commands::watch::watch;
+
+use sa430::create_monitor;
+use sa430::create_scanner;
 
 #[derive(Parser)]
 #[command(version)]
@@ -18,13 +24,27 @@ enum Commands {
     #[command(about = "Scan for connected SA430 devices123")]
     #[command(short_flag = 's')]
     Scan {},
+
+    #[command(about = "Monitor for connected SA430 devices")]
+    #[command(short_flag = 'm')]
+    Watch {},
 }
 
 fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Commands::Scan {}) => scan(ScannerFactory::create().unwrap(), &mut std::io::stdout()),
+        Some(Commands::Scan {}) => exec_scan(),
+        Some(Commands::Watch {}) => exec_watch(),
         None => panic!("No command provided, use --help for usage"),
     }
+}
+
+fn exec_scan() {
+    scan(create_scanner(), &mut std::io::stdout()).unwrap();
+}
+
+fn exec_watch() {
+    let output: Rc<RefCell<dyn Write>> = Rc::new(RefCell::new(std::io::stdout()));
+    watch(create_monitor().as_mut(), Rc::downgrade(&output)).unwrap()
 }
