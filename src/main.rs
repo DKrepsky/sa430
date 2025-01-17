@@ -26,7 +26,7 @@ enum Commands {
     Scan {},
 
     #[command(about = "Monitor for connected SA430 devices")]
-    #[command(short_flag = 'm')]
+    #[command(short_flag = 'w')]
     Watch {},
 }
 
