@@ -1,4 +1,4 @@
-# SA430 Sub-1 GHz RF Spectrum Analyzer Tool Rust Library
+# SA430 Sub-1 GHz RF Spectrum Analyzer Library for Rust
 
 [![CI](https://github.com/DKrepsky/sa430/actions/workflows/ci.yml/badge.svg)](https://github.com/DKrepsky/sa430/actions/workflows/ci.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/DKrepsky/sa430)
@@ -6,47 +6,82 @@
 ![Crates.io Total Downloads](https://img.shields.io/crates/d/sa430)
 ![GitHub License](https://img.shields.io/github/license/DKrepsky/sa430)
 
-
 ## Overview
 
-The SA430 Rust library provides a set of tools for interacting with Texas Instruments SA430 Sub-1 GHz RF spectrum analyzers. It allows users to scan, analyze, and visualize RF spectrum data. This library is designed to be used in both command-line applications and as a dependency in other Rust projects.
+The **SA430** Rust library provides tools to interact with Texas Instruments SA430 Sub-1 GHz RF spectrum analyzers. It enables scanning, analyzing, and visualizing RF spectrum data. You can use it as a standalone CLI tool or integrate it into your Rust projects.
 
-## Supported Operational Systems
+This library is primarily Unix-compatible, requiring `libudev` for scanning operations. Other features are cross-platform.
 
-Most functionalities works on all platforms, except the scan, which at the time only support unix based systems that are libudev compatible.
 
 ## Installation
 
-### Standalone CLI Application
+### CLI Application
 
-Install the dependencies (Linux Only):
+For Linux systems, ensure the required dependency is installed:
 ```bash
 sudo apt install libudev-dev
 ```
 
-You can use cargo to install the application:
+Then, install the CLI tool using Cargo:
 
 ```bash
 cargo install sa430
 ```
 
-Then run the [commands](#commands), for example:
-```bash
-sa430 scan
-```
+### Rust Library
+To use this library in your Rust project, add it as a dependency:
 
-### Library in Other Rust Projects
-
-Add the project dependency:
 ```bash
 cargo add sa430
 ```
 
-Checkout the [examples](examples/) folder for usage.
+## Usage
 
+### CLI Commands
 
-## CLI Usage
+`scan`: Lists all connected SA430 devices:
 
-- `scan`: List all connected spectrum analyzers.
-- `watch`: Watch for device connected/disconnected events.
+```bash
+sa430 scan
+```
+
+`watch`: Monitors device connection and disconnection events:
+
+```bash
+sa430 watch
+```
+
+### Library Integration
+
+Here’s an example of integrating the library into a Rust project:
+
+```
+use sa430::{create_scanner, Scanner, Device};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let scanner = create_scanner();
+    let devices = scanner.scan();
+
+    for device in devices {
+        println!("Found device: {}", device.name());
+    }
+
+    Ok(())
+}
+```
+
+More examples can be found in the [examples](examples/) folder, like monitoring for device events and taking measurements.
+
+## Troubleshooting
+
+### Common Issues
+
+- libudev not found: Ensure the libudev-dev package is installed on Linux:
+```bash
+sudo apt install libudev-dev
+```
+- No devices detected: Confirm that your SA430 device is connected and powered on. Use `sa430 scan` to verify.
+
+## License
+This library is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
