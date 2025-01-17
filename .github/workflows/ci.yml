@@ -33,9 +33,6 @@ jobs:
       - name: Run tests
         run: cargo test
 
-      - name: Run documentation tests
-        run: cargo test --doc
-
   lint:
     name: Check lint
     runs-on: ubuntu-latest
