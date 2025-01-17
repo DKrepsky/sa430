@@ -48,4 +48,5 @@ Checkout the [examples](examples/) folder for usage.
 ## CLI Usage
 
 - `scan`: List all connected spectrum analyzers.
+- `watch`: Watch for device connected/disconnected events.
 
