@@ -82,6 +82,12 @@ sudo apt install libudev-dev
 ```
 - No devices detected: Confirm that your SA430 device is connected and powered on. Use `sa430 scan` to verify.
 
+- Permission error when opening the serial port: make sure your user has the `dialout` group.
+```bash
+# Logout/restart required after this command
+sudo usermod -aG dialout $USER
+```
+
 ## License
 This library is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
