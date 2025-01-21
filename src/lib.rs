@@ -9,35 +9,25 @@ pub mod monitor;
 pub mod scanner;
 
 #[cfg(target_os = "linux")]
-pub(crate) mod linux_scanner;
+pub(crate) mod linux;
 
 /// Creates a scanner for the current OS.
-#[cfg(target_os = "linux")]
 pub fn create_scanner() -> Box<dyn scanner::Scanner> {
-    Box::new(linux_scanner::LinuxScanner::new())
-}
+    #[cfg(target_os = "linux")]
+    return Box::new(linux::scanner::LinuxScanner::new());
 
-#[cfg(not(target_os = "linux"))]
-pub fn create_scanner() -> Box<dyn scanner::Scanner> {
+    #[cfg(not(target_os = "linux"))]
     panic!("No scanner for current OS");
 }
 
-#[cfg(target_os = "linux")]
-pub(crate) mod linux_monitor;
-
 /// Creates a monitor for the current OS.
-#[cfg(target_os = "linux")]
 pub fn create_monitor() -> Box<dyn monitor::Monitor> {
-    Box::new(linux_monitor::LinuxMonitor::new())
-}
+    #[cfg(target_os = "linux")]
+    return Box::new(linux::monitor::LinuxMonitor::new());
 
-#[cfg(not(target_os = "linux"))]
-pub fn create_monitor() -> Box<dyn monitor::Monitor> {
+    #[cfg(not(target_os = "linux"))]
     panic!("No monitor for current OS");
 }
-
-#[cfg(target_os = "linux")]
-pub(crate) mod linux_udev_utils;
 
 #[cfg(test)]
 mod tests {

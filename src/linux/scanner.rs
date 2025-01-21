@@ -1,9 +1,9 @@
 use udev::Enumerator;
 
-use super::device::Device;
-use super::scanner::Scanner;
+use crate::device::Device;
+use crate::scanner::Scanner;
 
-use super::linux_udev_utils::*;
+use super::udev_utils::*;
 
 pub struct LinuxScanner;
 

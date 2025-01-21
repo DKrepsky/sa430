@@ -1,4 +1,4 @@
-use super::device::*;
+use crate::device::*;
 
 pub fn is_sa430(device: &udev::Device) -> bool {
     let vendor_id = get_property(device, VENDOR_ID_PROPERTY_KEY).unwrap_or_default();

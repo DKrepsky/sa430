@@ -1,5 +1,5 @@
-use super::linux_udev_utils::*;
-use super::monitor::*;
+use super::udev_utils::*;
+use crate::monitor::*;
 
 pub struct LinuxMonitor {
     handlers: Vec<Box<Handler>>,
