@@ -1,12 +1,12 @@
-mod commands;
+mod cli;
 
 use std::cell::RefCell;
 use std::io::Write;
 use std::rc::Rc;
 
 use clap::{Parser, Subcommand};
-use commands::scan::scan;
-use commands::watch::watch;
+use cli::scan::scan;
+use cli::watch::watch;
 
 use sa430::create_monitor;
 use sa430::create_scanner;
