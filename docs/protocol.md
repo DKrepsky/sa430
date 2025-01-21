@@ -24,17 +24,17 @@ The device connects through USB as a serial port, identified by the vendor ID (V
 
 Communication between the device and the computer is conducted through packets called frames. Each frame consists of the following components:
 
-- **Mark**: A constant value (0x2A) that denotes the start of a frame.
+- **Magic**: A constant value (0x2A) that denotes the start of a frame.
 - **Length**: The size of the data field in bytes.
 - **Command**: Indicates the command being sent or responded to.
 - **Data**: The payload of the command or response.
 - **CRC**: A CRC16 checksum of the frame to ensure data integrity.
 
-| Field    | Mark | Length | Cmd  | Data       | Crc        |
-| -------- | ---- | ------ | ---- | ---------- | ---------- |
-| Index    | 0    | 1      | 2    | 3          | 3+N        |
-| Size [B] | 1    | 1      | 1    | N          | 2          |
-| Sample   | 0x2A | 0x02   | 0x0A | 0x05, 0x02 | 0xAD, 0xBF |
+| Field    | Magic | Length | Cmd  | Data       | Crc        |
+| -------- | ----- | ------ | ---- | ---------- | ---------- |
+| Index    | 0     | 1      | 2    | 3          | 3+N        |
+| Size [B] | 1     | 1      | 1    | N          | 2          |
+| Sample   | 0x2A  | 0x02   | 0x0A | 0x05, 0x02 | 0xAD, 0xBF |
 
 **Table 2:** Sample frame for a CMD_SET_GAIN command.
 
@@ -48,19 +48,19 @@ The CRC must be calculated in accordance to Appendix C.
 ### Transmitting and receiving frames
 
 The state machine continually reads bytes from the input FIFO until it completes a valid frame.
-It looks for a mark byte (0x2A), then reads the length, command, data, and CRC. If the CRC is correct, it stores the frame and signals a received event; otherwise, it signals an error.
+It looks for a Magic byte (0x2A), then reads the length, command, data, and CRC. If the CRC is correct, it stores the frame and signals a received event; otherwise, it signals an error.
 
 ```text
 **Device**                                       **Computer**
-    |-------------------------------------------> WAIT_MARK
-    |--- Mark (0x2A) ---------------------------> WAIT_LENGTH
+    |-------------------------------------------> WAIT_MAGIC
+    |--- Magic (0x2A) ---------------------------> WAIT_LENGTH
     |--- Length --------------------------------> WAIT_CMD
     |--- Command -------------------------------> if (length > 0) WAIT_DATA else WAIT_CRC_HIGH
     |--- Data bytes (Length - 1 times) ---------> while (received < length) WAIT_DATA
     |--- Data (Last byte) ----------------------> WAIT_CRC_HIGH
     |--- CRC High byte -------------------------> WAIT_CRC_LOW
     |--- CRC Low byte --------------------------> CRC OK ? Frame Event : Error Event
-    |-------------------------------------------> WAIT_MARK (repeat)
+    |-------------------------------------------> WAIT_MAGIC (repeat)
 ```
 **Figure 1:** Sequence diagram representing the communication between device and the computer.
 
@@ -79,9 +79,9 @@ Computer                                         Device
 
 The ACK packet consists of a frame with the same command, but with length 0, i.e, no data.
 
-| Mark | Length | Cmd  | Crc        |
-| ---- | ------ | ---- | ---------- |
-| 0x2A | 0x00   | 0x04 | 0xC5, 0xAC |
+| Magic | Length | Cmd  | Crc        |
+| ----- | ------ | ---- | ---------- |
+| 0x2A  | 0x00   | 0x04 | 0xC5, 0xAC |
 
 **Table 3:** ACK frame for a CMD_BLINK_LED command.
 
@@ -98,9 +98,9 @@ When a command returns data, it receives an ACK and then the data frames, as rep
 
 If an error occurs, a NACK response is returned, together with the error code. The NACK has always a command with CMD_GET_LAST_ERROR and 2 data bytes with the erro code from Appendix B.
 
-| Mark | Length | Cmd  | Data       | Crc        |
-| ---- | ------ | ---- | ---------- | ---------- |
-| 0x2A | 0x02   | 0x06 | 0x03, 0x26 | 0x0f, 0x38 |
+| Magic | Length | Cmd  | Data       | Crc        |
+| ----- | ------ | ---- | ---------- | ---------- |
+| 0x2A  | 0x02   | 0x06 | 0x03, 0x26 | 0x0f, 0x38 |
 
 **Table 4:** Sample NACK frame for a CRC error.
 
