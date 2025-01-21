@@ -14,7 +14,7 @@ readme = "README.md"
 udev = "0.9.2"
 
 [dependencies]
-clap = { version = "4.5.26", features = ["derive"] }
+clap = { version = "4.5.27", features = ["derive"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.16"
