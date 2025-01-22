@@ -8,6 +8,10 @@ pub mod device;
 pub mod monitor;
 pub mod scanner;
 
+pub(crate) mod com;
+pub(crate) mod crc;
+pub(crate) mod frame;
+
 #[cfg(target_os = "linux")]
 pub(crate) mod linux;
 
