@@ -21,7 +21,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(about = "Scan for connected SA430 devices123")]
+    #[command(about = "Scan for connected SA430 devices")]
     #[command(short_flag = 's')]
     Scan {},
 

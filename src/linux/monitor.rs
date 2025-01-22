@@ -27,11 +27,11 @@ impl LinuxMonitor {
     }
 
     fn process(&mut self, event: udev::Event) {
-        let device = device_from_event(&event);
+        let port = port_from_event(&event);
 
         match event.event_type() {
-            udev::EventType::Add => self.notify(Event::DeviceAdded(device)),
-            udev::EventType::Remove => self.notify(Event::DeviceRemoved(device)),
+            udev::EventType::Add => self.notify(Event::DeviceAdded(port)),
+            udev::EventType::Remove => self.notify(Event::DeviceRemoved(port)),
             _ => {}
         }
     }

@@ -1,10 +1,10 @@
 //! # SA430 Crate
 //!
 //! This crate provides functionality to interact with SA430 SA430 Sub-1 GHz RF Spectrum Analyzer
-//! from [Texas Instruments](https://www.ti.com/). It includes modules for scanning devices, handling
+//! from [Texas Instruments](https://www.ti.com/). It includes modules for finding connected devices, handling
 //! commands, capturing data, and more.
 
-pub mod device;
+pub mod port;
 pub mod monitor;
 pub mod scanner;
 

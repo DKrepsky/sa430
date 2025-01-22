@@ -1,12 +1,12 @@
 use std::{cell::RefCell, io::Result, io::Write, rc::Weak};
 
-use sa430::{device::Device, monitor::*};
+use sa430::{monitor::*, port::Port};
 
-/// Watches for connected and disconnected devices using the provided monitor and outputs the device information using the provided writer.
+/// Watches for SA430 connected/disconnected events using the provided monitor.
 ///
 /// # Arguments
-/// * `monitor` - The monitor to use to watch for devices.
-/// * `output` - The writer to output the devices found.
+/// * `monitor` - The monitor to use to watch for events.
+/// * `output` - The writer to output the events received.
 ///
 /// # Note
 /// The monitor will be started and will run indefinitely until the process is killed.
@@ -15,30 +15,30 @@ pub fn watch(monitor: &mut dyn Monitor, output: Weak<RefCell<dyn Write>>) -> Res
     monitor.start()
 }
 
-fn print(event_type: &str, device: &Device, output: &mut dyn Write) {
+fn print(event_type: &str, port: &Port, output: &mut dyn Write) {
     writeln!(
         output,
         "{}: {:14} | {:16} | {:4}",
         event_type,
-        device.port(),
-        device.serial_number(),
-        device.firmware_version()
+        port.name(),
+        port.serial_number(),
+        port.firmware_version()
     )
     .expect("Failed to write to output");
 }
 
 fn handler_factory(output: Weak<RefCell<dyn Write>>) -> Box<Handler> {
     Box::new(move |event: Event| match event {
-        Event::DeviceAdded(device) => {
+        Event::DeviceAdded(port) => {
             if let Some(output) = output.upgrade() {
                 let mut output = output.borrow_mut();
-                print("Connected", &device, &mut *output);
+                print("Connected", &port, &mut *output);
             }
         }
-        Event::DeviceRemoved(device) => {
+        Event::DeviceRemoved(port) => {
             if let Some(output) = output.upgrade() {
                 let mut output = output.borrow_mut();
-                print("Disconnected", &device, &mut *output);
+                print("Disconnected", &port, &mut *output);
             }
         }
     })
@@ -71,8 +71,8 @@ mod tests {
             self.started
         }
 
-        fn a_device(&self) -> Device {
-            Device::new("/dev/ttyUSB1", "08FF41E50F8B3A34", "0104")
+        fn a_port(&self) -> Port {
+            Port::new("/dev/ttyUSB1", "08FF41E50F8B3A34", "0104")
         }
     }
 
@@ -84,11 +84,11 @@ mod tests {
         fn start(&mut self) -> Result<()> {
             self.started += 1;
             for handler in self.handlers.iter() {
-                handler(Event::DeviceAdded(self.a_device()));
+                handler(Event::DeviceAdded(self.a_port()));
             }
 
             for handler in self.handlers.iter() {
-                handler(Event::DeviceRemoved(self.a_device()));
+                handler(Event::DeviceRemoved(self.a_port()));
             }
             Ok(())
         }
@@ -115,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_event_when_monitor_then_print_device_information() {
+    fn given_a_event_when_monitor_then_print_port_information() {
         let output = Rc::new(RefCell::new(Vec::new()));
         let mut monitor = MockMonitor::new();
         let writer = VecWriter::new(output.clone());

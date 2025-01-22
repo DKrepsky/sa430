@@ -18,7 +18,7 @@ fn given_no_arguments_are_provided_then_return_an_error() -> Result<(), Box<dyn 
 
 #[test]
 #[cfg(target_os = "linux")]
-fn when_scan_then_list_devices() -> Result<(), Box<dyn std::error::Error>> {
+fn when_scan_then_list_ports() -> Result<(), Box<dyn std::error::Error>> {
     Command::cargo_bin(BIN_NAME)?.arg("scan").assert().success();
 
     Ok(())

@@ -1,6 +1,6 @@
 use udev::Enumerator;
 
-use crate::device::Device;
+use crate::port::Port;
 use crate::scanner::Scanner;
 
 use super::udev_utils::*;
@@ -24,13 +24,13 @@ impl LinuxScanner {
 }
 
 impl Scanner for LinuxScanner {
-    fn scan(&self) -> Vec<Device> {
+    fn scan(&self) -> Vec<Port> {
         return self
             .enumerator()
             .scan_devices()
             .expect("Failed to scan devices")
             .filter(is_sa430)
-            .map(device_from_udev)
+            .map(port_from_device)
             .collect();
     }
 }

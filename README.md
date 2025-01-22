@@ -56,21 +56,21 @@ sa430 watch
 Here’s an example of integrating the library into a Rust project:
 
 ```
-use sa430::{create_scanner, Scanner, Device};
+use sa430::{create_scanner, Scanner, Port};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let scanner = create_scanner();
-    let devices = scanner.scan();
+    let ports = scanner.scan();
 
-    for device in devices {
-        println!("Found device: {}", device.name());
+    for port in ports {
+        println!("Found SA430 at: {}", port.name());
     }
 
     Ok(())
 }
 ```
 
-More examples can be found in the [examples](examples/) folder, like monitoring for device events and taking measurements.
+More examples can be found in the [examples](examples/) folder, like monitoring for port events and taking measurements.
 
 ## Troubleshooting
 
@@ -80,7 +80,7 @@ More examples can be found in the [examples](examples/) folder, like monitoring 
 ```bash
 sudo apt install libudev-dev
 ```
-- No devices detected: Confirm that your SA430 device is connected and powered on. Use `sa430 scan` to verify.
+- No ports detected: Confirm that your SA430 device is connected and powered on. Use `sa430 scan` to verify.
 
 - Permission error when opening the serial port: make sure your user has the `dialout` group.
 ```bash
