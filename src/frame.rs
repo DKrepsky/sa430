@@ -37,16 +37,16 @@ pub enum Command {
     GetIdn = 0x01,
 
     /// Get Hardware Serial Number
-    GetHwSerNr = 0x02,
+    GetSerialNumber = 0x02,
 
     /// Hardware Reset (PUC)
-    HwReset = 0x03,
+    HardwareReset = 0x03,
 
     /// Identify hardware by blinking LED
     BlinkLed = 0x04,
 
     /// Get core version
-    GetCoreVer = 0x05,
+    GetCoreVersion = 0x05,
 
     /// Error
     GetLastError = 0x06,
@@ -54,8 +54,8 @@ pub enum Command {
     /// Unknown
     Sync = 0x07,
 
-    /// Get Spec version
-    GetSpecVer = 0x14,
+    /// Get Spectrum version
+    GetSpectrumVersion = 0x14,
 
     /// Set Start Frequency `fstart`
     SetFStart = 0x15,
@@ -97,10 +97,10 @@ pub enum Command {
     GetTemp = 0x3E,
 
     /// Set hardware id
-    SetHwId = 0x3F,
+    SetHardwareId = 0x3F,
 
     /// Get Hardware id
-    GetHwId = 0x40,
+    GetHardwareId = 0x40,
 
     /// Boot count
     GetBootCnt = 0x41,
@@ -136,18 +136,61 @@ pub enum Command {
     FrameError = 0xFF,
 }
 
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let description = match self {
+            Command::Unknown => "Unknown",
+            Command::GetIdn => "Get IDN",
+            Command::GetSerialNumber => "Get Hardware Serial Number",
+            Command::HardwareReset => "Hardware Reset (PUC)",
+            Command::BlinkLed => "Identify hardware by blinking LED",
+            Command::GetCoreVersion => "Get core version",
+            Command::GetLastError => "Error",
+            Command::Sync => "Unknown",
+            Command::GetSpectrumVersion => "Get Spec version",
+            Command::SetFStart => "Set Start Frequency `fstart`",
+            Command::SetFStop => "Set Stop Frequency `fstop`",
+            Command::SetFStep => "Set Step Frequency `fstep`",
+            Command::SetFrq => "Unknown",
+            Command::SetRbw => "Set Rx Filter Bandwidth",
+            Command::SetDac => "Set DC value for the balun (unknown)",
+            Command::SetGain => "Set gain of the Rx path",
+            Command::SetIf => "Set Intermediate Frequency",
+            Command::InitParameter => "Setup system for spectrum measurement",
+            Command::GetSpecNoInit => "Measure spectrum with defined parameters",
+            Command::GetProdVer => "Get prod version",
+            Command::SetProdFwInit => "Unknown",
+            Command::GetTemp => "Unknown",
+            Command::SetHardwareId => "Set hardware id",
+            Command::GetHardwareId => "Get Hardware id",
+            Command::GetBootCnt => "Boot count",
+            Command::SetFout => "0=Off, 1=26MHz, 2=RF Freq.  (next bytes)",
+            Command::SetFxtal => "Set frequency, incl. temp/cal versions",
+            Command::GetFxtal => "Get frequency, incl. temp/cal versions",
+            Command::SweepEdc => "f, gain, repetition count",
+            Command::GetChipTlv => "Unknown",
+            Command::FlashRead => "Send address and size, get flash content",
+            Command::FlashWrite => "Unknown",
+            Command::FlashErase => "Unknown",
+            Command::FlashGetCrc => "Unknown",
+            Command::FrameError => "Frame Error",
+        };
+        write!(f, "{}", description)
+    }
+}
+
 impl From<u8> for Command {
     fn from(value: u8) -> Self {
         match value {
             0x00 => Command::Unknown,
             0x01 => Command::GetIdn,
-            0x02 => Command::GetHwSerNr,
-            0x03 => Command::HwReset,
+            0x02 => Command::GetSerialNumber,
+            0x03 => Command::HardwareReset,
             0x04 => Command::BlinkLed,
-            0x05 => Command::GetCoreVer,
+            0x05 => Command::GetCoreVersion,
             0x06 => Command::GetLastError,
             0x07 => Command::Sync,
-            0x14 => Command::GetSpecVer,
+            0x14 => Command::GetSpectrumVersion,
             0x15 => Command::SetFStart,
             0x16 => Command::SetFStop,
             0x17 => Command::SetFStep,
@@ -161,8 +204,8 @@ impl From<u8> for Command {
             0x3C => Command::GetProdVer,
             0x3D => Command::SetProdFwInit,
             0x3E => Command::GetTemp,
-            0x3F => Command::SetHwId,
-            0x40 => Command::GetHwId,
+            0x3F => Command::SetHardwareId,
+            0x40 => Command::GetHardwareId,
             0x41 => Command::GetBootCnt,
             0x42 => Command::SetFout,
             0x43 => Command::SetFxtal,
@@ -187,7 +230,7 @@ pub enum ErrorCode {
     WrongCmdLength = 0x0321,
     CmdAborted = 0x0322,
     LostCmd = 0x0323,
-    CmdUnknown = 0x0324,
+    UnknownCmd = 0x0324,
     TooMuchDataRequestedByUserFunction = 0x0325,
     RestoreProgramCounter = 0x0326,
     BufferPosOutOfRange = 0x0327,
@@ -196,7 +239,7 @@ pub enum ErrorCode {
     WrongCrcHighByte = 0x032A,
     RestoreFromPacketError = 0x032C,
     NoFrameStart = 0x032D,
-    WrongPktLength = 0x032E,
+    WrongPacketLength = 0x032E,
     PacketIncomplete = 0x032F,
     PacketError = 0x0330,
     StupidPacketHandler = 0x0331,
@@ -218,7 +261,7 @@ impl fmt::Display for ErrorCode {
             ErrorCode::WrongCmdLength => "Wrong command length",
             ErrorCode::CmdAborted => "Command aborted",
             ErrorCode::LostCmd => "Lost command",
-            ErrorCode::CmdUnknown => "Unknown command",
+            ErrorCode::UnknownCmd => "Unknown command",
             ErrorCode::TooMuchDataRequestedByUserFunction => {
                 "Too much data requested by user function"
             }
@@ -229,7 +272,7 @@ impl fmt::Display for ErrorCode {
             ErrorCode::WrongCrcHighByte => "Wrong CRC high byte",
             ErrorCode::RestoreFromPacketError => "Restore from packet error",
             ErrorCode::NoFrameStart => "No frame start",
-            ErrorCode::WrongPktLength => "Wrong packet length",
+            ErrorCode::WrongPacketLength => "Wrong packet length",
             ErrorCode::PacketIncomplete => "Packet incomplete",
             ErrorCode::PacketError => "Packet error",
             ErrorCode::StupidPacketHandler => "Stupid packet handler",
@@ -245,6 +288,12 @@ impl fmt::Display for ErrorCode {
     }
 }
 
+impl fmt::UpperHex for ErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:04X}", *self as u16)
+    }
+}
+
 impl From<Vec<u8>> for ErrorCode {
     fn from(value: Vec<u8>) -> Self {
         let code = u16::from_be_bytes([value[0], value[1]]);
@@ -254,7 +303,7 @@ impl From<Vec<u8>> for ErrorCode {
             0x0321 => ErrorCode::WrongCmdLength,
             0x0322 => ErrorCode::CmdAborted,
             0x0323 => ErrorCode::LostCmd,
-            0x0324 => ErrorCode::CmdUnknown,
+            0x0324 => ErrorCode::UnknownCmd,
             0x0325 => ErrorCode::TooMuchDataRequestedByUserFunction,
             0x0326 => ErrorCode::RestoreProgramCounter,
             0x0327 => ErrorCode::BufferPosOutOfRange,
@@ -263,7 +312,7 @@ impl From<Vec<u8>> for ErrorCode {
             0x032A => ErrorCode::WrongCrcHighByte,
             0x032C => ErrorCode::RestoreFromPacketError,
             0x032D => ErrorCode::NoFrameStart,
-            0x032E => ErrorCode::WrongPktLength,
+            0x032E => ErrorCode::WrongPacketLength,
             0x032F => ErrorCode::PacketIncomplete,
             0x0330 => ErrorCode::PacketError,
             0x0331 => ErrorCode::StupidPacketHandler,
@@ -330,7 +379,12 @@ pub struct Frame {
 
 impl Frame {
     /// Creates a new frame with default values.
-    pub fn new(cmd: Command, data: Vec<u8>) -> Self {
+    pub fn new(cmd: Command) -> Self {
+        Frame { cmd, data: vec![] }
+    }
+
+    /// Creates a new frame with the given command and data.
+    pub fn with_data(cmd: Command, data: Vec<u8>) -> Self {
         Frame { cmd, data }
     }
 
@@ -340,6 +394,10 @@ impl Frame {
 
     pub fn data(&self) -> &[u8] {
         &self.data
+    }
+
+    pub fn is_error(&self) -> bool {
+        self.cmd == Command::GetLastError
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, FrameError> {
@@ -432,7 +490,7 @@ mod tests {
 
     #[test]
     fn given_a_frame_when_to_bytes_then_return_bytes() {
-        let frame = Frame::new(Command::FlashRead, vec![0xD4, 0x00, 0x00, 0x0A]);
+        let frame = Frame::with_data(Command::FlashRead, vec![0xD4, 0x00, 0x00, 0x0A]);
         let bytes = frame.to_bytes();
         assert_eq!(
             bytes,
@@ -442,7 +500,7 @@ mod tests {
 
     #[test]
     fn given_an_error_when_to_error_code_then_return_error_code() {
-        let frame = Frame::new(Command::GetLastError, vec![0x03, 0x20]);
+        let frame = Frame::with_data(Command::GetLastError, vec![0x03, 0x20]);
         let error_code = frame.to_error_code().unwrap();
         assert_eq!(error_code, ErrorCode::CmdBufferOverflow);
     }
