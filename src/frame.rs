@@ -388,23 +388,28 @@ impl Frame {
         Frame { cmd, data }
     }
 
+    /// Returns the command of the frame.
     pub fn cmd(&self) -> Command {
         self.cmd
     }
 
+    /// Returns the data of the frame.
     pub fn data(&self) -> &[u8] {
         &self.data
     }
 
+    /// Returns true if the frame is an error.
     pub fn is_error(&self) -> bool {
         self.cmd == Command::GetLastError
     }
 
+    /// Creates a frame from a byte array.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, FrameError> {
         Frame::validate(bytes)?;
         Frame::parse(bytes)
     }
 
+    /// Creates a byte array from the frame.
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = vec![FRAME_MAGIC_VALUE, self.data.len() as u8, self.cmd as u8];
         bytes.append(&mut self.data.clone());
@@ -413,6 +418,7 @@ impl Frame {
         bytes
     }
 
+    /// Returns the error code if the frame is an error.
     pub fn to_error_code(&self) -> Option<ErrorCode> {
         match self.cmd() {
             Command::GetLastError => Some(self.data.clone().into()),
@@ -420,6 +426,7 @@ impl Frame {
         }
     }
 
+    /// Validates the frame bytes.
     fn validate(bytes: &[u8]) -> Result<(), FrameError> {
         if bytes[FRAME_MAGIC_INDEX] != FRAME_MAGIC_VALUE {
             return Err(FrameError::InvalidMagicValue(bytes[FRAME_MAGIC_INDEX]));
@@ -441,6 +448,7 @@ impl Frame {
         Ok(())
     }
 
+    /// Parses the frame bytes.
     fn parse(bytes: &[u8]) -> Result<Self, FrameError> {
         let cmd = Command::from(bytes[FRAME_COMMAND_INDEX]);
         let data = bytes[FRAME_DATA_INDEX..bytes.len() - FRAME_CRC_SIZE].to_vec();
@@ -452,6 +460,32 @@ impl Frame {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn given_a_command_when_new_then_return_frame() {
+        let frame = Frame::new(Command::GetIdn);
+        assert_eq!(frame.cmd(), Command::GetIdn);
+        assert_eq!(frame.data(), vec![]);
+    }
+
+    #[test]
+    fn given_a_command_and_data_when_with_data_then_return_frame() {
+        let frame = Frame::with_data(Command::GetIdn, vec![0x01, 0x02, 0x03]);
+        assert_eq!(frame.cmd(), Command::GetIdn);
+        assert_eq!(frame.data(), vec![0x01, 0x02, 0x03].as_slice());
+    }
+
+    #[test]
+    fn given_a_frame_when_cmd_is_get_last_error_then_is_error_return_true() {
+        let frame = Frame::new(Command::GetLastError);
+        assert!(frame.is_error());
+    }
+
+    #[test]
+    fn given_a_frame_when_cmd_is_not_get_last_error_then_is_error_return_false() {
+        let frame = Frame::new(Command::GetIdn);
+        assert!(!frame.is_error());
+    }
 
     #[test]
     fn given_bytes_when_from_bytes_then_return_frame() {
