@@ -4,13 +4,16 @@
 //! from [Texas Instruments](https://www.ti.com/). It includes modules for finding connected devices, handling
 //! commands, capturing data, and more.
 
-pub mod port;
+pub mod channel;
+pub mod device;
+pub mod frame;
 pub mod monitor;
+pub mod port;
 pub mod scanner;
 
-pub(crate) mod com;
 pub(crate) mod crc;
-pub(crate) mod frame;
+pub(crate) mod parser;
+pub(crate) mod protocol;
 
 #[cfg(target_os = "linux")]
 pub(crate) mod linux;
