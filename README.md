@@ -51,6 +51,12 @@ sa430 scan
 sa430 watch
 ```
 
+`info`: Read device basic information:
+
+```bash
+sa430 info <PORT>
+```
+
 ### Library Integration
 
 Here’s an example of integrating the library into a Rust project:
