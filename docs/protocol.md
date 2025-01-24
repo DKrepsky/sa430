@@ -162,7 +162,7 @@ The flash is laid out as shown in Table 5, totalling 1671 bytes.
 | ------- | -------------- | ------ | -------------- |
 | 0xD400  | mem_start_addr | u16    | Must be 0xD400 |
 | 0xD402  | mem_length     | u16    |                |
-| 0xD404  | mem_type       | u16    | Must be 0x3E00 |
+| 0xD404  | mem_type       | u16    | Must be 0x003E |
 | 0xD406  | type_version   | u16    | Must be 0x0002 |
 | 0xD408  | crc16          | u16    |                |
 | 0xD40A  | CalData        | struct | See Table 6    |
