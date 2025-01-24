@@ -40,7 +40,7 @@ impl ByteArrayParser<'_> {
     ///
     /// A `Result` containing the byte or an error if the buffer does not have enough data.
     pub fn take_u8(&mut self) -> Result<u8, Box<dyn Error>> {
-        if self.offset >= self.buffer.len() {
+        if self.offset + 1 > self.buffer.len() {
             return Err("index out of bounds".into());
         }
 
@@ -55,7 +55,7 @@ impl ByteArrayParser<'_> {
     ///
     /// A `Result` containing the `u16` or an error if the buffer does not have enough data.
     pub fn take_u16(&mut self) -> Result<u16, Box<dyn Error>> {
-        if self.offset + 2 >= self.buffer.len() {
+        if self.offset + 2 > self.buffer.len() {
             return Err("index out of bounds".into());
         }
 
@@ -70,7 +70,7 @@ impl ByteArrayParser<'_> {
     ///
     /// A `Result` containing the `u32` or an error if the buffer does not have enough data.
     pub fn take_u32(&mut self) -> Result<u32, Box<dyn Error>> {
-        if self.offset + 4 >= self.buffer.len() {
+        if self.offset + 4 > self.buffer.len() {
             return Err("index out of bounds".into());
         }
 
@@ -89,7 +89,7 @@ impl ByteArrayParser<'_> {
     ///
     /// A `Result` containing a slice of the bytes or an error if the buffer does not have enough data.
     pub fn take_bytes(&mut self, size: usize) -> Result<&[u8], Box<dyn Error>> {
-        if self.offset + size >= self.buffer.len() {
+        if self.offset + size > self.buffer.len() {
             return Err("index out of bounds".into());
         }
 
