@@ -6,8 +6,7 @@ use std::process::Command;
 const BIN_NAME: &str = "sa430";
 
 #[test]
-fn given_no_arguments_are_provided_then_return_an_error() -> Result<(), Box<dyn std::error::Error>>
-{
+fn given_no_arguments_are_provided_then_return_an_error() -> Result<(), Box<dyn std::error::Error>> {
     Command::cargo_bin(BIN_NAME)?
         .assert()
         .failure()
