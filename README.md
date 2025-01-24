@@ -63,6 +63,12 @@ sa430 info <PORT>
 sa430 blink <PORT>
 ```
 
+`reboot`: Perform a hardware reset.
+
+```bash
+sa430 reboot <PORT>
+```
+
 ### Library Integration
 
 Here’s an example of integrating the library into a Rust project:
