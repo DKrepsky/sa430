@@ -7,9 +7,7 @@ pub struct LinuxMonitor {
 
 impl LinuxMonitor {
     pub fn new() -> Self {
-        LinuxMonitor {
-            handlers: Vec::new(),
-        }
+        LinuxMonitor { handlers: Vec::new() }
     }
 
     fn notify(&mut self, event: Event) {
@@ -43,9 +41,7 @@ impl Monitor for LinuxMonitor {
     }
 
     fn start(&mut self) -> std::io::Result<()> {
-        let socket = udev::MonitorBuilder::new()?
-            .match_subsystem("tty")?
-            .listen()?;
+        let socket = udev::MonitorBuilder::new()?.match_subsystem("tty")?.listen()?;
 
         loop {
             self.poll(&socket);
