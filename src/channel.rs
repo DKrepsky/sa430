@@ -182,6 +182,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(target_os = "linux")]
     fn given_serial_port_path_when_port_does_not_exist_then_error() {
         let port_name = "/some/non/existent/port";
         let result = SerialPortChannel::new(port_name);
