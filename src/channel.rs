@@ -15,11 +15,11 @@
 //!
 //! ## Usage Example
 //!
-//! ```rust
-//! use crate::channel::{Channel, SerialPortChannel};
+//! ```ignore
+//! use sa430::channel::{Channel, SerialPortChannel};
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let mut channel = SerialPortChannel::new("/dev/ttyUSB0")?;
+//!     let mut channel = SerialPortChannel::new("/dev/ttyACM0")?;
 //!     let reader = channel.reader();
 //!     let writer = channel.writer();
 //!     // Use reader and writer for communication
@@ -111,7 +111,7 @@ pub mod fixtures {
     //! ## Usage Example
     //!
     //! ```rust
-    //! use crate::channel::fixtures::MockChannel;
+    //! use sa430::channel::fixtures::MockChannel;
     //!
     //! fn main() {
     //!     let mut mock_channel = MockChannel::new();

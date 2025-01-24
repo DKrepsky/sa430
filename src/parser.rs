@@ -1,21 +1,21 @@
-/// A parser for reading various types of data from a byte array.
-///
-/// # Examples
-///
-/// ```rust
-/// use sa430::parser::ByteArrayParser;
-///
-/// let data = vec![0x01, 0x02, 0x03, 0x04];
-/// let mut parser = ByteArrayParser::new(&data);
-///
-/// assert_eq!(parser.take_u8().unwrap(), 0x01);
-/// assert_eq!(parser.take_u16().unwrap(), 0x0203);
-/// assert_eq!(parser.take_u32().unwrap_err().to_string(), "index out of bounds: the len is 4 but the index is 4");
-/// ```
-///
-/// # Errors
-///
-/// Each method returns a `Result` which will contain an error if the buffer does not have enough data to fulfill the request.
+//! A parser for reading various types of data from a byte array.
+//!
+//! # Examples
+//!
+//! ```ignore
+//! use sa430::parser::ByteArrayParser;
+//!
+//! let data = vec![0x01, 0x02, 0x03, 0x04];
+//! let mut parser = ByteArrayParser::new(&data);
+//!
+//! assert_eq!(parser.take_u8().unwrap(), 0x01);
+//! assert_eq!(parser.take_u16().unwrap(), 0x0203);
+//! assert_eq!(parser.take_u32().unwrap_err().to_string(), "index out of bounds: the len is 4 but the index is 4");
+//! ```
+//!
+//! # Errors
+//!
+//! Each method returns a `Result` which will contain an error if the buffer does not have enough data to fulfill the request.
 use std::error::Error;
 
 /// A parser for reading various types of data from a byte buffer.

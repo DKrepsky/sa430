@@ -1,4 +1,4 @@
-use std::{cell::RefCell, io::Result, io::Write, rc::Weak};
+use std::{cell::RefCell, rc::Weak};
 
 use sa430::{monitor::*, port::Port};
 
@@ -10,12 +10,12 @@ use sa430::{monitor::*, port::Port};
 ///
 /// # Note
 /// The monitor will be started and will run indefinitely until the process is killed.
-pub fn watch(monitor: &mut dyn Monitor, output: Weak<RefCell<dyn Write>>) -> Result<()> {
+pub fn watch(monitor: &mut dyn Monitor, output: Weak<RefCell<dyn std::io::Write>>) -> std::io::Result<()> {
     monitor.subscribe(handler_factory(output));
     monitor.start()
 }
 
-fn print(event_type: &str, port: &Port, output: &mut dyn Write) {
+fn print(event_type: &str, port: &Port, output: &mut dyn std::io::Write) {
     writeln!(
         output,
         "{}: {:14} | {:16} | {:4}",
@@ -27,7 +27,7 @@ fn print(event_type: &str, port: &Port, output: &mut dyn Write) {
     .expect("Failed to write to output");
 }
 
-fn handler_factory(output: Weak<RefCell<dyn Write>>) -> Box<Handler> {
+fn handler_factory(output: Weak<RefCell<dyn std::io::Write>>) -> Box<Handler> {
     Box::new(move |event: Event| match event {
         Event::DeviceAdded(port) => {
             if let Some(output) = output.upgrade() {
@@ -81,7 +81,7 @@ mod tests {
             self.handlers.push(handler);
         }
 
-        fn start(&mut self) -> Result<()> {
+        fn start(&mut self) -> std::io::Result<()> {
             self.started += 1;
             for handler in self.handlers.iter() {
                 handler(Event::DeviceAdded(self.a_port()));
@@ -104,12 +104,12 @@ mod tests {
         }
     }
 
-    impl Write for VecWriter {
+    impl std::io::Write for VecWriter {
         fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
             self.inner.borrow_mut().write(buf)
         }
 
-        fn flush(&mut self) -> Result<()> {
+        fn flush(&mut self) -> std::io::Result<()> {
             self.inner.borrow_mut().flush()
         }
     }
@@ -119,7 +119,7 @@ mod tests {
         let output = Rc::new(RefCell::new(Vec::new()));
         let mut monitor = MockMonitor::new();
         let writer = VecWriter::new(output.clone());
-        let writer_ref: Rc<RefCell<dyn Write>> = Rc::new(RefCell::new(writer));
+        let writer_ref: Rc<RefCell<dyn std::io::Write>> = Rc::new(RefCell::new(writer));
 
         watch(&mut monitor, Rc::downgrade(&writer_ref)).expect("Failed to monitor");
 

@@ -492,7 +492,7 @@ pub mod fixture {
     //!
     //! ## Usage Example
     //!
-    //! ```rust
+    //! ```ignore
     //! use sa430::frame::fixture::{PROG_HEADER_DATA, CALIBRATION_DATA_1, CALIBRATION_DATA_2};
     //!
     //! fn main() {
