@@ -8,13 +8,11 @@
 //! ```rust
 //! use sa430::frame::{Command, Frame};
 //!
-//! fn main() {
-//!   let frame = Frame::new(Command::GetIdn);
-//!   let bytes = frame.to_bytes();
-//!   let parsed_frame = Frame::from_bytes(&bytes).unwrap();
+//! let frame = Frame::new(Command::GetIdn);
+//! let bytes = frame.to_bytes();
+//! let parsed_frame = Frame::from_bytes(&bytes).unwrap();
 //!
-//!   assert_eq!(frame, parsed_frame);
-//! }
+//! assert_eq!(frame, parsed_frame);
 //! ```
 use std::{
     error::Error,
@@ -675,7 +673,7 @@ mod tests {
 
     #[test]
     fn given_a_command_and_data_when_with_data_then_return_frame() {
-        let frame = Frame::with_data(Command::GetIdn, &vec![0x01, 0x02, 0x03]);
+        let frame = Frame::with_data(Command::GetIdn, &[0x01, 0x02, 0x03]);
         assert_eq!(frame.cmd(), Command::GetIdn);
         assert_eq!(frame.data(), vec![0x01, 0x02, 0x03].as_slice());
     }
@@ -726,14 +724,14 @@ mod tests {
 
     #[test]
     fn given_a_frame_when_to_bytes_then_return_bytes() {
-        let frame = Frame::with_data(Command::FlashRead, &vec![0xD4, 0x00, 0x00, 0x0A]);
+        let frame = Frame::with_data(Command::FlashRead, &[0xD4, 0x00, 0x00, 0x0A]);
         let bytes = frame.to_bytes();
         assert_eq!(bytes, vec![0x2A, 0x04, 0x0A, 0xD4, 0x00, 0x00, 0x0A, 0xCD, 0xAD]);
     }
 
     #[test]
     fn given_an_error_when_to_error_code_then_return_error_code() {
-        let frame = Frame::with_data(Command::GetLastError, &vec![0x03, 0x20]);
+        let frame = Frame::with_data(Command::GetLastError, &[0x03, 0x20]);
         let error_code = frame.to_error_code().unwrap();
         assert_eq!(error_code, ErrorCode::CmdBufferOverflow);
     }

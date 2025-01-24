@@ -27,14 +27,14 @@ pub fn get_string(channel: &mut dyn Channel, command: Command) -> Result<String,
 pub fn get_u32(channel: &mut dyn Channel, command: Command) -> Result<u32, Box<dyn Error>> {
     let result = exec_with_result(channel, command)?;
     let mut parser = ByteArrayParser::new(&result);
-    Ok(parser.take_u32()?)
+    parser.take_u32()
 }
 
 /// Sends a command to the device and returns the response as a `u16`.
 pub fn get_u16(channel: &mut dyn Channel, command: Command) -> Result<u16, Box<dyn Error>> {
     let result = exec_with_result(channel, command)?;
     let mut parser = ByteArrayParser::new(&result);
-    Ok(parser.take_u16()?)
+    parser.take_u16()
 }
 
 /// Reads a block of data from the device's flash memory starting at the specified address and of the specified size.
@@ -45,7 +45,7 @@ pub fn read_flash(channel: &mut dyn Channel, addr: u16, size: u16) -> Result<Vec
 
     while remains > 0 {
         let chunk_size = if remains > 255 { 255 } else { remains };
-        let data: Vec<u8> = vec![pointer.to_be_bytes(), chunk_size.to_be_bytes()].concat();
+        let data: Vec<u8> = [pointer.to_be_bytes(), chunk_size.to_be_bytes()].concat();
         let request = Frame::with_data(Command::FlashRead, &data);
         send_frame(&request, channel.writer())?;
 
@@ -111,7 +111,7 @@ enum ReceiverState {
 }
 
 fn send_frame(frame: &Frame, port: &mut dyn Write) -> Result<(), Box<dyn Error>> {
-    port.write(&frame.to_bytes())?;
+    port.write_all(&frame.to_bytes())?;
     Ok(())
 }
 
@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn given_a_frame_when_send_frame_then_send_frame_to_port() {
-        let frame = Frame::with_data(Command::SetGain, &vec![0x00, 0x01]);
+        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]);
         let mut port = Vec::new();
         send_frame(&frame, &mut port).unwrap();
         assert_eq!(port, vec![0x2a, 0x02, 0x1B, 0x00, 0x01, 0x0F, 0xDC]);
@@ -257,28 +257,28 @@ mod tests {
 
     #[test]
     fn given_a_frame_when_receive_frame_then_receive_frame_from_port() {
-        let frame = Frame::with_data(Command::SetGain, &vec![0x00, 0x01]);
+        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]);
         let mut port = Vec::new();
-        port.write(&frame.to_bytes()).unwrap();
+        port.write_all(&frame.to_bytes()).unwrap();
         let received_frame = receive_frame(&mut port.as_slice()).unwrap();
         assert_eq!(frame, received_frame);
     }
 
     #[test]
     fn given_a_frame_with_no_data_when_receive_frame_then_receive_frame_from_port() {
-        let frame = Frame::with_data(Command::BlinkLed, &vec![]);
+        let frame = Frame::with_data(Command::BlinkLed, &[]);
         let mut port = Vec::new();
-        port.write(&frame.to_bytes()).unwrap();
+        port.write_all(&frame.to_bytes()).unwrap();
         let received_frame = receive_frame(&mut port.as_slice()).unwrap();
         assert_eq!(frame, received_frame);
     }
 
     #[test]
     fn given_a_frame_when_receive_frame_then_receive_frame_from_port_with_extra_bytes() {
-        let frame = Frame::with_data(Command::SetGain, &vec![0x00, 0x01]);
+        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]);
         let mut port = Vec::new();
-        port.write(&[0x00, 0x00, 0x00]).unwrap();
-        port.write(&frame.to_bytes()).unwrap();
+        port.write_all(&[0x00, 0x00, 0x00]).unwrap();
+        port.write_all(&frame.to_bytes()).unwrap();
         let received_frame = receive_frame(&mut port.as_slice()).unwrap();
         assert_eq!(frame, received_frame);
     }
@@ -287,7 +287,7 @@ mod tests {
     fn given_a_frame_with_error_when_receive_frame_then_return_error() {
         let port = vec![0x2A, 0x00, 0x00, 0x00, 0x01];
         let result = receive_frame(&mut port.as_slice());
-        assert_eq!(result.is_err(), true);
+        assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
             "Invalid CRC, expected: 0x0001, current: 0x8528"

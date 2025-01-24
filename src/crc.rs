@@ -9,9 +9,9 @@
 pub fn crc16(raw: &[u8]) -> u16 {
     let mut crc = raw[0] as u16;
 
-    for index in 1..raw.len() {
-        crc = (crc >> 8) | (crc << 8);
-        crc ^= raw[index] as u16;
+    for value in raw.iter().skip(1) {
+        crc = crc.rotate_left(8);
+        crc ^= *value as u16;
         crc ^= (crc & 0xff) >> 4;
         crc ^= (crc << 8) << 4;
         crc ^= ((crc & 0xff) << 4) << 1;

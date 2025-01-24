@@ -73,10 +73,10 @@ impl From<&[u8; 65]> for FrequencyGain {
         let ref_level_index = value[0];
         let mut gains = [0.0; 8];
 
-        for i in 0..8 {
+        for (i, gain) in gains.iter_mut().enumerate() {
             let offset = 1 + i * 8;
             let bytes: [u8; 8] = value[offset..offset + 8].try_into().unwrap();
-            gains[i] = f64::from_be_bytes(bytes);
+            *gain = f64::from_be_bytes(bytes);
         }
 
         Self { ref_level_index, gains }
@@ -260,13 +260,14 @@ impl Sa430 {
     fn check_prog_header(&mut self) -> Result<(), Box<dyn Error>> {
         let prog_header_vec = read_flash(self.channel.as_mut(), FLASH_PROG_HEADER_ADDR, FLASH_PROG_HEADER_SIZE)?;
         let prog_header: ProgHeader = prog_header_vec.as_slice().into();
-        Ok(if prog_header.mem_type != FLASH_PROG_HEADER_TYPE {
+        if prog_header.mem_type != FLASH_PROG_HEADER_TYPE {
             let message = format!(
                 "Invalid flash memory type, expected: {}, got: {}",
                 FLASH_PROG_HEADER_TYPE, prog_header.mem_type
             );
             return Err(message.into());
-        })
+        }
+        Ok(())
     }
 
     fn read_calibration(&mut self) -> Result<Calibration, Box<dyn Error>> {

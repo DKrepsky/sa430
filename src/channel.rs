@@ -113,17 +113,16 @@ pub mod fixtures {
     //! ```rust
     //! use sa430::channel::fixtures::MockChannel;
     //!
-    //! fn main() {
-    //!     let mut mock_channel = MockChannel::new();
-    //!     mock_channel.add_response(b"Hello, world!");
-    //!     // Use mock_channel for testing
-    //! }
+    //! let mut mock_channel = MockChannel::new();
+    //! mock_channel.add_response(b"Hello, world!");
+    //! // Use mock_channel for testing
     //! ```
     use super::*;
 
     /// ### `MockChannel`
     ///
     /// A struct that simulates a communication channel by using in-memory buffers for reading and writing.
+    #[derive(Debug, Default)]
     pub struct MockChannel {
         /// A `Vec<u8>` that acts as the buffer for incoming data.
         pub read_buffer: Vec<u8>,
@@ -158,11 +157,12 @@ pub mod fixtures {
 
     impl io::Read for MockChannel {
         fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let len = buf.len();
             // Copy buf.len() bytes from the read buffer and remove the copied data to simulate reading from the channel
-            for i in 0..buf.len() {
-                buf[i] = self.read_buffer.remove(0);
+            for byte in buf {
+                *byte = self.read_buffer.remove(0);
             }
-            Ok(buf.len())
+            Ok(len)
         }
     }
 
