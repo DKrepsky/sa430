@@ -8,6 +8,7 @@ use std::rc::Rc;
 
 use cli::blink::blink;
 use cli::info::info;
+use cli::reboot::reboot;
 use cli::scan::scan;
 use cli::watch::watch;
 
@@ -47,6 +48,13 @@ enum Commands {
         #[arg(help = "Serial port to use")]
         port: String,
     },
+
+    #[command(about = "Performs a hardware reset on the device")]
+    #[command(short_flag = 'r')]
+    Reboot {
+        #[arg(help = "Serial port to use")]
+        port: String,
+    },
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -57,6 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Some(Commands::Watch {}) => exec_watch(),
         Some(Commands::Info { port }) => exec_info(&port),
         Some(Commands::Blink { port }) => exec_blink(&port),
+        Some(Commands::Reboot { port }) => exec_reboot(&port),
         None => panic!("No command provided, use --help for usage"),
     }
 }
@@ -82,4 +91,10 @@ fn exec_blink(port: &str) -> Result<(), Box<dyn Error>> {
     let channel = SerialPortChannel::new(port)?;
     let mut device = Sa430::new(Box::new(channel));
     blink(&mut device, &mut std::io::stdout())
+}
+
+fn exec_reboot(port: &str) -> Result<(), Box<dyn Error>> {
+    let channel = SerialPortChannel::new(port)?;
+    let mut device = Sa430::new(Box::new(channel));
+    reboot(&mut device, &mut std::io::stdout())
 }

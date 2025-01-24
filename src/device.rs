@@ -234,6 +234,11 @@ impl Sa430 {
         exec(self.channel.as_mut(), Command::BlinkLed)
     }
 
+    /// Reboot the device.
+    pub fn reboot(&mut self) -> Result<(), Box<dyn Error>> {
+        exec(self.channel.as_mut(), Command::HardwareReset)
+    }
+
     /// Gets the device calibration data.
     ///
     /// Result is cached for subsequent calls.
