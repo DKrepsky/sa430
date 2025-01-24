@@ -1,6 +1,8 @@
 mod cli;
 
 use clap::{Parser, Subcommand};
+use cli::capture::capture;
+use cli::capture::CaptureParams;
 use std::cell::RefCell;
 use std::error::Error;
 use std::io::Write;
@@ -55,6 +57,26 @@ enum Commands {
         #[arg(help = "Serial port to use")]
         port: String,
     },
+
+    #[command(about = "Capture a spectrum")]
+    #[command(short_flag = 'c')]
+    Capture {
+        #[arg(help = "Serial port to use")]
+        port: String,
+        #[arg(long)]
+        #[arg(help = "The frequency to start capturing at, in MHz")]
+        fstart: f64,
+        #[arg(long)]
+        #[arg(long, help = "The frequency to stop capturing at, in MHz")]
+        fstop: f64,
+        #[arg(long)]
+        #[arg(long, help = "The frequency to step by, in MHz")]
+        fstep: f64,
+        #[arg(long = "rlevel")]
+        #[arg(help = "Maximum signal power before saturation, in dBm. Default is -35 dBm")]
+        #[arg(long_help = "Must be one of -35,-40, -45, -50, -55, -60, -65 or -70 dBm")]
+        ref_level: Option<i8>,
+    },
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -66,6 +88,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         Some(Commands::Info { port }) => exec_info(&port),
         Some(Commands::Blink { port }) => exec_blink(&port),
         Some(Commands::Reboot { port }) => exec_reboot(&port),
+        Some(Commands::Capture {
+            port,
+            fstart,
+            fstop,
+            fstep,
+            ref_level,
+        }) => exec_capture(&port, fstart, fstop, fstep, ref_level),
         None => panic!("No command provided, use --help for usage"),
     }
 }
@@ -97,4 +126,16 @@ fn exec_reboot(port: &str) -> Result<(), Box<dyn Error>> {
     let channel = SerialPortChannel::new(port)?;
     let mut device = Sa430::new(Box::new(channel));
     reboot(&mut device, &mut std::io::stdout())
+}
+
+fn exec_capture(port: &str, fstart: f64, fstop: f64, fstep: f64, ref_level: Option<i8>) -> Result<(), Box<dyn Error>> {
+    let channel = SerialPortChannel::new(port)?;
+    let mut device = Sa430::new(Box::new(channel));
+    let params = CaptureParams {
+        fstart,
+        fstop,
+        fstep,
+        ref_level,
+    };
+    capture(&mut device, &params, &mut std::io::stdout())
 }
