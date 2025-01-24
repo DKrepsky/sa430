@@ -229,6 +229,11 @@ impl Sa430 {
         get_u16(self.channel.as_mut(), Command::GetSpectrumVersion).map(|v| (format!("{}.{}", v >> 8, v & 0xFF)))
     }
 
+    /// Blink the device LED.
+    pub fn blink(&mut self) -> Result<(), Box<dyn Error>> {
+        exec(self.channel.as_mut(), Command::BlinkLed)
+    }
+
     /// Gets the device calibration data.
     ///
     /// Result is cached for subsequent calls.

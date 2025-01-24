@@ -57,6 +57,12 @@ sa430 watch
 sa430 info <PORT>
 ```
 
+`blink`: Blink the led.
+
+```bash
+sa430 blink <PORT>
+```
+
 ### Library Integration
 
 Here’s an example of integrating the library into a Rust project:

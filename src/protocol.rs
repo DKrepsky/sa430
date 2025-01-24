@@ -63,6 +63,17 @@ pub fn read_flash(channel: &mut dyn Channel, addr: u16, size: u16) -> Result<Vec
     Ok(buffer)
 }
 
+/// Executes a command that has no result.
+pub fn exec(channel: &mut dyn Channel, command: Command) -> Result<(), Box<dyn Error>> {
+    let request = Frame::new(command);
+    send_frame(&request, channel.writer())?;
+
+    let ack = receive_frame(channel.reader())?;
+    validate(&request, &ack)?;
+
+    Ok(())
+}
+
 /// Executes a command and returns the response as a byte vector.
 pub fn exec_with_result(channel: &mut dyn Channel, command: Command) -> Result<Vec<u8>, Box<dyn Error>> {
     let request = Frame::new(command);

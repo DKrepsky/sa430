@@ -1,16 +1,17 @@
 mod cli;
 
+use clap::{Parser, Subcommand};
 use std::cell::RefCell;
 use std::error::Error;
 use std::io::Write;
 use std::rc::Rc;
 
-use clap::{Parser, Subcommand};
+use cli::blink::blink;
 use cli::info::info;
 use cli::scan::scan;
 use cli::watch::watch;
-use sa430::channel::SerialPortChannel;
 
+use sa430::channel::SerialPortChannel;
 use sa430::create_monitor;
 use sa430::create_scanner;
 use sa430::device::Sa430;
@@ -39,6 +40,13 @@ enum Commands {
         #[arg(help = "The port to read device information from")]
         port: String,
     },
+
+    #[command(about = "Blink the LED on the device")]
+    #[command(short_flag = 'b')]
+    Blink {
+        #[arg(help = "Serial port to use")]
+        port: String,
+    },
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -48,6 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Some(Commands::Scan {}) => exec_scan(),
         Some(Commands::Watch {}) => exec_watch(),
         Some(Commands::Info { port }) => exec_info(&port),
+        Some(Commands::Blink { port }) => exec_blink(&port),
         None => panic!("No command provided, use --help for usage"),
     }
 }
@@ -67,4 +76,10 @@ fn exec_info(port: &str) -> Result<(), Box<dyn Error>> {
     let channel = SerialPortChannel::new(port)?;
     let mut device = Sa430::new(Box::new(channel));
     info(&mut device, &mut std::io::stdout())
+}
+
+fn exec_blink(port: &str) -> Result<(), Box<dyn Error>> {
+    let channel = SerialPortChannel::new(port)?;
+    let mut device = Sa430::new(Box::new(channel));
+    blink(&mut device, &mut std::io::stdout())
 }
