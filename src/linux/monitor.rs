@@ -22,15 +22,15 @@ impl LinuxMonitor<'_> {
         let port = port_from_event(&event);
 
         match event.event_type() {
-            udev::EventType::Add => self.notify(Event::DeviceAdded(port)),
-            udev::EventType::Remove => self.notify(Event::DeviceRemoved(port)),
+            udev::EventType::Add => self.notify(&Event::DeviceAdded(port)),
+            udev::EventType::Remove => self.notify(&Event::DeviceRemoved(port)),
             _ => {}
         }
     }
 
-    fn notify(&mut self, event: Event) {
+    fn notify(&mut self, event: &Event) {
         for handler in self.handlers.iter_mut() {
-            handler.handle(event.clone());
+            handler.handle(event);
         }
     }
 }

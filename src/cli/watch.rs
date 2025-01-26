@@ -11,7 +11,7 @@ impl<'a> PrinterEventHandler<'a> {
 }
 
 impl<'a> EventHandler for PrinterEventHandler<'a> {
-    fn handle(&mut self, event: Event) {
+    fn handle(&mut self, event: &Event) {
         match event {
             Event::DeviceAdded(port) => print("Connected", &port, self.output),
             Event::DeviceRemoved(port) => print("Disconnected", &port, self.output),
@@ -74,11 +74,11 @@ mod tests {
         fn start(&mut self) -> std::io::Result<()> {
             self.started += 1;
             for handler in self.handlers.iter_mut() {
-                handler.handle(Event::DeviceAdded(a_port()));
+                handler.handle(&Event::DeviceAdded(a_port()));
             }
 
             for handler in self.handlers.iter_mut() {
-                handler.handle(Event::DeviceRemoved(a_port()));
+                handler.handle(&Event::DeviceRemoved(a_port()));
             }
             Ok(())
         }

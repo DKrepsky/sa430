@@ -46,7 +46,7 @@ pub enum Event {
 }
 
 pub trait EventHandler {
-    fn handle(&mut self, event: Event);
+    fn handle(&mut self, event: &Event);
 }
 
 /// A monitor is responsible for monitoring devices connected to the computer.
