@@ -1,11 +1,14 @@
 //! Provides functionality to detect USB connect/disconnect events.
 //!
 //! The module defines an `Event` enum to represent device addition and removal events, and a `Monitor` trait
-//! that allows subscribing to these events and starting the monitoring process.
+//! that allows an `EventHandler` to subscribe to these events and starting the monitoring process.
 //!
 //! The `Event` enum includes:
 //! - `DeviceAdded(Port)`: Indicates that a new device has been connected to the `Port`.
 //! - `DeviceRemoved(Port)`: Indicates that a device has been disconnected from `Port`.
+//!
+//! The `EventHandler` trait defines the behavior for handling these events, which includes:
+//! - `handle(&mut self, event: &Event)`: This method is called when an event occurs.
 //!
 //! To get a monitor instance, the user must call the `sa430::create_monitor()` function, which provides an OS-specific
 //! implementation. Users should only implement the `Monitor` trait if they want to support operating systems other than
@@ -22,14 +25,20 @@
 //! use sa430::monitor::{Monitor, Event};
 //!
 //! // Create a monitor and subscribe to usb events.
-//! fn main() -> std::io::Result<()> {
-//!     let mut monitor = create_monitor();
-//!     monitor.subscribe(Box::new(|event| match event {
-//!         Event::DeviceAdded(port) => println!("Device added at: {:?}", port),
-//!         Event::DeviceRemoved(port) => println!("Device removed at: {:?}", port),
-//!     }));
-//!     monitor.start()
+//! struct SomeEventHandler;
+//!
+//! impl sa430::monitor::EventHandler for SomeEventHandler {
+//!   fn handle(&mut self, event: &Event) {
+//!     match event {
+//!       Event::DeviceAdded(port) => println!("Device added: {:?}", port),
+//!       Event::DeviceRemoved(port) => println!("Device removed: {:?}", port),
+//!     }
+//!   }
 //! }
+//! let mut monitor = create_monitor();
+//! let mut handler = SomeEventHandler{};
+//! monitor.subscribe(&mut handler);
+//! monitor.start()
 //! ```
 
 use super::port::Port;
@@ -45,6 +54,10 @@ pub enum Event {
     DeviceRemoved(Port),
 }
 
+/// Defines the behavior for handling events.
+///
+/// To handle events, implement the `EventHandler` trait and override the `handle` method, then subscribe to the
+/// monitor.
 pub trait EventHandler {
     fn handle(&mut self, event: &Event);
 }

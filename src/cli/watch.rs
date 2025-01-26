@@ -13,8 +13,8 @@ impl<'a> PrinterEventHandler<'a> {
 impl<'a> EventHandler for PrinterEventHandler<'a> {
     fn handle(&mut self, event: &Event) {
         match event {
-            Event::DeviceAdded(port) => print("Connected", &port, self.output),
-            Event::DeviceRemoved(port) => print("Disconnected", &port, self.output),
+            Event::DeviceAdded(port) => print("Connected", port, self.output),
+            Event::DeviceRemoved(port) => print("Disconnected", port, self.output),
         }
     }
 }
