@@ -45,13 +45,14 @@ pub enum Event {
     DeviceRemoved(Port),
 }
 
-/// A handler is a function that processes an event.
-pub type Handler = dyn Fn(Event);
+pub trait EventHandler {
+    fn handle(&mut self, event: Event);
+}
 
 /// A monitor is responsible for monitoring devices connected to the computer.
-pub trait Monitor {
+pub trait Monitor<'a> {
     /// Subscribes to usb events.
-    fn subscribe(&mut self, handler: Box<Handler>);
+    fn subscribe(&mut self, handler: &'a mut dyn EventHandler);
 
     /// Starts the monitor.
     fn start(&mut self) -> std::io::Result<()>;

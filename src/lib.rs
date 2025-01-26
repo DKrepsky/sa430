@@ -27,12 +27,15 @@ pub fn create_scanner() -> Box<dyn scanner::Scanner> {
     panic!("No scanner for current OS");
 }
 
-/// Creates a monitor for the current OS.
-pub fn create_monitor() -> Box<dyn monitor::Monitor> {
-    #[cfg(target_os = "linux")]
-    return Box::new(linux::monitor::LinuxMonitor::new());
+/// Creates a monitor for Linux.
+#[cfg(target_os = "linux")]
+pub fn create_monitor<'a>() -> Box<linux::monitor::LinuxMonitor<'a>> {
+    Box::new(linux::monitor::LinuxMonitor::new())
+}
 
-    #[cfg(not(target_os = "linux"))]
+/// Creates a monitor for other OS.
+#[cfg(not(target_os = "linux"))]
+pub fn create_monitor<'a>() -> Box<dyn monitor::Monitor<'a>> {
     panic!("No monitor for current OS");
 }
 

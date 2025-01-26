@@ -1,6 +1,23 @@
-use std::{cell::RefCell, rc::Weak};
-
 use sa430::{monitor::*, port::Port};
+
+pub struct PrinterEventHandler<'a> {
+    output: &'a mut dyn std::io::Write,
+}
+
+impl<'a> PrinterEventHandler<'a> {
+    pub fn new(output: &'a mut dyn std::io::Write) -> PrinterEventHandler<'a> {
+        PrinterEventHandler { output }
+    }
+}
+
+impl<'a> EventHandler for PrinterEventHandler<'a> {
+    fn handle(&mut self, event: Event) {
+        match event {
+            Event::DeviceAdded(port) => print("Connected", &port, self.output),
+            Event::DeviceRemoved(port) => print("Disconnected", &port, self.output),
+        }
+    }
+}
 
 /// Watches for SA430 connected/disconnected events using the provided monitor.
 ///
@@ -10,8 +27,8 @@ use sa430::{monitor::*, port::Port};
 ///
 /// # Note
 /// The monitor will be started and will run indefinitely until the process is killed.
-pub fn watch(monitor: &mut dyn Monitor, output: Weak<RefCell<dyn std::io::Write>>) -> std::io::Result<()> {
-    monitor.subscribe(handler_factory(output));
+pub fn watch<'a>(monitor: &mut dyn Monitor<'a>, handler: &'a mut dyn EventHandler) -> std::io::Result<()> {
+    monitor.subscribe(handler);
     monitor.start()
 }
 
@@ -27,35 +44,16 @@ fn print(event_type: &str, port: &Port, output: &mut dyn std::io::Write) {
     .expect("Failed to write to output");
 }
 
-fn handler_factory(output: Weak<RefCell<dyn std::io::Write>>) -> Box<Handler> {
-    Box::new(move |event: Event| match event {
-        Event::DeviceAdded(port) => {
-            if let Some(output) = output.upgrade() {
-                let mut output = output.borrow_mut();
-                print("Connected", &port, &mut *output);
-            }
-        }
-        Event::DeviceRemoved(port) => {
-            if let Some(output) = output.upgrade() {
-                let mut output = output.borrow_mut();
-                print("Disconnected", &port, &mut *output);
-            }
-        }
-    })
-}
-
 #[cfg(test)]
 mod tests {
-    use std::{ops::Deref, rc::Rc};
-
     use super::*;
 
-    struct MockMonitor {
-        handlers: Vec<Box<Handler>>,
+    struct MockMonitor<'a> {
+        handlers: Vec<&'a mut dyn EventHandler>,
         started: u8,
     }
 
-    impl MockMonitor {
+    impl<'a> MockMonitor<'a> {
         fn new() -> Self {
             MockMonitor {
                 handlers: Vec::new(),
@@ -63,72 +61,49 @@ mod tests {
             }
         }
 
-        fn handlers(&self) -> &Vec<Box<Handler>> {
+        fn handlers(&mut self) -> &[&'a mut dyn EventHandler] {
             &self.handlers
         }
 
         fn started(&self) -> u8 {
             self.started
         }
-
-        fn a_port(&self) -> Port {
-            Port::new("/dev/ttyUSB1", "08FF41E50F8B3A34", "0104")
-        }
     }
 
-    impl Monitor for MockMonitor {
-        fn subscribe(&mut self, handler: Box<Handler>) {
-            self.handlers.push(handler);
-        }
-
+    impl<'a> Monitor<'a> for MockMonitor<'a> {
         fn start(&mut self) -> std::io::Result<()> {
             self.started += 1;
-            for handler in self.handlers.iter() {
-                handler(Event::DeviceAdded(self.a_port()));
+            for handler in self.handlers.iter_mut() {
+                handler.handle(Event::DeviceAdded(a_port()));
             }
 
-            for handler in self.handlers.iter() {
-                handler(Event::DeviceRemoved(self.a_port()));
+            for handler in self.handlers.iter_mut() {
+                handler.handle(Event::DeviceRemoved(a_port()));
             }
             Ok(())
         }
-    }
 
-    struct VecWriter {
-        inner: Rc<RefCell<Vec<u8>>>,
-    }
-
-    impl VecWriter {
-        fn new(inner: Rc<RefCell<Vec<u8>>>) -> Self {
-            VecWriter { inner }
+        fn subscribe(&mut self, handler: &'a mut dyn EventHandler) {
+            self.handlers.push(handler);
         }
     }
 
-    impl std::io::Write for VecWriter {
-        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-            self.inner.borrow_mut().write(buf)
-        }
-
-        fn flush(&mut self) -> std::io::Result<()> {
-            self.inner.borrow_mut().flush()
-        }
+    fn a_port() -> Port {
+        Port::new("/dev/ttyUSB1", "08FF41E50F8B3A34", "0104")
     }
 
     #[test]
     fn given_a_event_when_monitor_then_print_port_information() {
-        let output = Rc::new(RefCell::new(Vec::new()));
+        let mut output = Vec::new();
+        let mut handler = PrinterEventHandler::new(&mut output);
         let mut monitor = MockMonitor::new();
-        let writer = VecWriter::new(output.clone());
-        let writer_ref: Rc<RefCell<dyn std::io::Write>> = Rc::new(RefCell::new(writer));
 
-        watch(&mut monitor, Rc::downgrade(&writer_ref)).expect("Failed to monitor");
-
-        let written = String::from_utf8(output.borrow().deref().clone()).unwrap();
+        watch(&mut monitor, &mut handler).expect("Failed to monitor");
 
         assert_eq!(monitor.started(), 1);
         assert_eq!(monitor.handlers().len(), 1);
         assert_eq!(
-            written,
+            String::from_utf8(output).unwrap(),
             "Connected: /dev/ttyUSB1   | 08FF41E50F8B3A34 | 0104\n\
             Disconnected: /dev/ttyUSB1   | 08FF41E50F8B3A34 | 0104\n"
         );

@@ -3,10 +3,9 @@ mod cli;
 use clap::{Parser, Subcommand};
 use cli::capture::capture;
 use cli::capture::CaptureParams;
-use std::cell::RefCell;
+use cli::watch::PrinterEventHandler;
+use sa430::create_monitor;
 use std::error::Error;
-use std::io::Write;
-use std::rc::Rc;
 
 use cli::blink::blink;
 use cli::info::info;
@@ -15,7 +14,6 @@ use cli::scan::scan;
 use cli::watch::watch;
 
 use sa430::channel::SerialPortChannel;
-use sa430::create_monitor;
 use sa430::create_scanner;
 use sa430::device::Sa430;
 
@@ -105,8 +103,10 @@ fn exec_scan() -> Result<(), Box<dyn Error>> {
 }
 
 fn exec_watch() -> Result<(), Box<dyn Error>> {
-    let output: Rc<RefCell<dyn Write>> = Rc::new(RefCell::new(std::io::stdout()));
-    watch(create_monitor().as_mut(), Rc::downgrade(&output))?;
+    let mut output = std::io::stdout();
+    let mut handler = PrinterEventHandler::new(&mut output);
+    let mut monitor = create_monitor();
+    watch(&mut *monitor, &mut handler)?;
     Ok(())
 }
 

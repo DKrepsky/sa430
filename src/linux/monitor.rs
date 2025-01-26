@@ -1,19 +1,13 @@
 use super::udev_utils::*;
 use crate::monitor::*;
 
-pub struct LinuxMonitor {
-    handlers: Vec<Box<Handler>>,
+pub struct LinuxMonitor<'a> {
+    handlers: Vec<&'a mut dyn EventHandler>,
 }
 
-impl LinuxMonitor {
-    pub fn new() -> Self {
+impl LinuxMonitor<'_> {
+    pub fn new<'a>() -> LinuxMonitor<'a> {
         LinuxMonitor { handlers: Vec::new() }
-    }
-
-    fn notify(&mut self, event: Event) {
-        for handler in self.handlers.iter() {
-            handler(event.clone());
-        }
     }
 
     fn poll(&mut self, socket: &udev::MonitorSocket) {
@@ -33,10 +27,16 @@ impl LinuxMonitor {
             _ => {}
         }
     }
+
+    fn notify(&mut self, event: Event) {
+        for handler in self.handlers.iter_mut() {
+            handler.handle(event.clone());
+        }
+    }
 }
 
-impl Monitor for LinuxMonitor {
-    fn subscribe(&mut self, handler: Box<Handler>) {
+impl<'a> Monitor<'a> for LinuxMonitor<'a> {
+    fn subscribe(&mut self, handler: &'a mut dyn EventHandler) {
         self.handlers.push(handler);
     }
 
