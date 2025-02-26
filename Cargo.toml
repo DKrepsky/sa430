@@ -14,7 +14,7 @@ readme = "README.md"
 udev = "0.9.3"
 
 [dependencies]
-clap = { version = "4.5.27", features = ["derive"] }
+clap = { version = "4.5.31", features = ["derive"] }
 serialport = "4.7.0"
 
 [dev-dependencies]
