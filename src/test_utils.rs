@@ -103,6 +103,12 @@ pub fn a_get_spectrum_version_response() -> Frame {
     Frame::with_data(Command::GetSpectrumVersion, &0x0205u16.to_be_bytes()).unwrap()
 }
 
+/// Data frame of a sweep ([`Command::GetSpecNoInit`]) carrying raw `samples` (at most 255).
+pub fn a_spectrum_response(samples: &[i8]) -> Frame {
+    let data: Vec<u8> = samples.iter().map(|&s| s as u8).collect();
+    Frame::with_data(Command::GetSpecNoInit, &data).unwrap()
+}
+
 /// Response to [`Command::FlashRead`] carrying `data` (at most 255 bytes).
 pub fn a_read_flash_response(data: &[u8]) -> Frame {
     Frame::with_data(Command::FlashRead, data).unwrap()

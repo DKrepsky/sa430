@@ -70,7 +70,9 @@ sa430 blink <PORT>
 sa430 reboot <PORT>
 ```
 
-`capture`: Capture a spectrum (work in progress, not implemented yet).
+`capture`: Measure the spectrum and print it as CSV (`frequency_mhz,power_dbm`). Frequencies are in MHz and must be
+within 300-348, 389-464 or 779-928 MHz (start and stop in the same range); the step goes from 0.001 to 75 MHz. The
+reference level (dBm) is one of -35 (default), -40, -45, -50, -55, -60, -65 or -70.
 
 ```bash
 sa430 capture <PORT> --fstart 433 --fstop 434 --fstep 0.1 [--rlevel -35]

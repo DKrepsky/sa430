@@ -62,6 +62,39 @@ pub fn read_flash(channel: &mut dyn Channel, addr: u16, size: u16) -> Result<Vec
     Ok(buffer)
 }
 
+/// Starts a sweep ([`Command::GetSpecNoInit`]) and returns the raw samples of all data frames.
+///
+/// The device streams data frames and ends the sweep with an error frame carrying [`ErrorCode::NoError`]. Any other
+/// error code aborts the sweep and is returned as [`Error::Device`].
+pub fn get_spectrum(channel: &mut dyn Channel) -> Result<Vec<u8>> {
+    let request = Frame::new(Command::GetSpecNoInit);
+    send_frame(&request, channel)?;
+    let ack = receive_frame(channel)?;
+    validate(&request, &ack)?;
+
+    let mut samples = Vec::new();
+    loop {
+        let frame = receive_frame(channel)?;
+        match frame.to_error_code() {
+            Some(ErrorCode::NoError) => return Ok(samples),
+            Some(code) => {
+                return Err(Error::Device {
+                    command: request.cmd(),
+                    code,
+                })
+            }
+            None => {}
+        }
+        if frame.cmd() != request.cmd() {
+            return Err(Error::UnexpectedResponse {
+                expected: request.cmd(),
+                received: frame.cmd(),
+            });
+        }
+        samples.extend_from_slice(frame.data());
+    }
+}
+
 /// Executes a command that has no result.
 pub fn exec(channel: &mut dyn Channel, command: Command) -> Result<()> {
     transact(channel, &Frame::new(command), false)?;
@@ -381,5 +414,46 @@ mod tests {
         let result = read_flash(&mut channel, 0x1000, 2).unwrap();
 
         assert_eq!(result, vec![0x01, 0x02]);
+    }
+
+    #[test]
+    fn given_data_frames_then_no_error_when_get_spectrum_then_concatenate_samples() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::GetSpecNoInit));
+        channel.add_response(&a_spectrum_response(&[1, -2]));
+        channel.add_response(&a_spectrum_response(&[3]));
+        channel.add_response(&an_error_response(0));
+
+        assert_eq!(get_spectrum(&mut channel).unwrap(), vec![1, 0xFE, 3]);
+    }
+
+    #[test]
+    fn given_an_error_during_the_sweep_when_get_spectrum_then_return_device_error() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::GetSpecNoInit));
+        channel.add_response(&a_spectrum_response(&[1]));
+        channel.add_response(&an_error_response(0x04B1));
+
+        let result = get_spectrum(&mut channel);
+
+        assert!(matches!(
+            result.unwrap_err(),
+            Error::Device {
+                code: ErrorCode::PllNotSettled,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn given_a_frame_for_another_command_during_the_sweep_when_get_spectrum_then_error() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::GetSpecNoInit));
+        channel.add_response(&a_get_core_version_response());
+
+        assert!(matches!(
+            get_spectrum(&mut channel).unwrap_err(),
+            Error::UnexpectedResponse { .. }
+        ));
     }
 }

@@ -7,6 +7,7 @@ use crate::error::{Error, Result};
 use crate::frame::Command;
 use crate::parser::ByteArrayParser;
 use crate::protocol::*;
+use crate::spectrum::{Measurement, SweepRequest};
 
 /// Start address of the program header (describes the calibration block) in flash memory.
 const FLASH_PROG_HEADER_ADDR: u16 = 0xD400;
@@ -262,6 +263,27 @@ impl Sa430 {
         exec_with_data(self.channel.as_mut(), Command::HardwareReset, &HARDWARE_RESET_PASSWORD)
     }
 
+    /// Measures the spectrum described by `request`.
+    ///
+    /// Configures the device, runs the sweep and applies the calibration offset to the samples. Reads (and caches)
+    /// the calibration data first if needed.
+    pub fn measure(&mut self, request: &SweepRequest) -> Result<Vec<Measurement>> {
+        let registers = request.registers(self.calibration()?.xtal_freq_hz)?;
+        let channel = self.channel.as_mut();
+
+        exec(channel, Command::InitParameter)?;
+        exec_with_data(channel, Command::SetFStart, &registers.f_start_bytes())?;
+        exec_with_data(channel, Command::SetFStop, &registers.f_stop_bytes())?;
+        exec_with_data(channel, Command::SetFStep, &registers.f_step.to_be_bytes())?;
+        exec_with_data(channel, Command::SetRbw, &[registers.rbw])?;
+        exec_with_data(channel, Command::SetIf, &[registers.if_])?;
+        exec_with_data(channel, Command::SetGain, &[registers.gain])?;
+        let samples = get_spectrum(channel)?;
+
+        let gains = self.calibration()?.frq_gains_tables[request.range_index()][request.ref_level_index()].gains;
+        Ok(registers.measurements(&samples, &gains))
+    }
+
     /// Gets the device calibration data.
     ///
     /// The data is read from flash on the first call and cached for subsequent calls.
@@ -377,5 +399,46 @@ mod tests {
     fn given_truncated_data_when_parse_calibration_then_return_error() {
         let result = Calibration::try_from(&[0u8; 100][..]);
         assert!(matches!(result, Err(Error::InvalidData(_))));
+    }
+
+    #[test]
+    fn given_a_device_when_measure_then_configure_the_registers_and_apply_calibration() {
+        let mut channel = MockChannel::new();
+        add_calibration_responses(&mut channel);
+        for command in [
+            Command::InitParameter,
+            Command::SetFStart,
+            Command::SetFStop,
+            Command::SetFStep,
+            Command::SetRbw,
+            Command::SetIf,
+            Command::SetGain,
+            Command::GetSpecNoInit,
+        ] {
+            channel.add_response(&an_ack_response(command));
+        }
+        channel.add_response(&a_spectrum_response(&[-80, 10]));
+        channel.add_response(&an_error_response(0));
+        let mut device = a_device_with(channel);
+        let request = SweepRequest::new(433.0, 434.0, 0.1, Some(-40)).unwrap();
+
+        let measurements = device.measure(&request).unwrap();
+
+        let gains = device.calibration().unwrap().frq_gains_tables[1][1].gains;
+        assert_eq!(measurements.len(), 2);
+        for (measurement, sample) in measurements.iter().zip([-40.0, 5.0]) {
+            let f_hz = measurement.frequency_mhz * 1e6;
+            let beta: f64 = gains.iter().enumerate().map(|(i, a)| a * f_hz.powi(i as i32)).sum();
+            assert!((measurement.power_dbm - (sample - beta)).abs() < 1e-6 * (1.0 + beta.abs()));
+        }
+        assert!((measurements[0].frequency_mhz - 433.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn given_invalid_calibration_when_measure_then_fail_before_configuring_the_device() {
+        let mut device = a_device_with(MockChannel::new());
+        let request = SweepRequest::new(433.0, 434.0, 0.1, None).unwrap();
+
+        assert!(device.measure(&request).is_err());
     }
 }
