@@ -1,0 +1,7 @@
+[workspace]
+# The GitHub release is created by cargo-dist (see .github/workflows/release.yml) when it sees the
+# tag pushed by release-plz, so it can attach the prebuilt binaries to it.
+git_release_enable = false
+git_tag_enable = true
+# Tags look like `v0.1.2`, matching what cargo-dist expects.
+git_tag_name = "v{{ version }}"
