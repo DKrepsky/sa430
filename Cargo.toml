@@ -1,6 +1,6 @@
 [package]
 name = "sa430"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.74"
 authors = ["David Krepsky"]
@@ -21,7 +21,7 @@ udev = "0.9.3"
 
 [dependencies]
 clap = { version = "4.5.57", features = ["derive"] }
-serialport = "4.7.0"
+serialport = "4.8.1"
 
 [dev-dependencies]
 assert_cmd = "2.1.2"
