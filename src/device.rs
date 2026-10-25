@@ -1,89 +1,88 @@
-use std::error::Error;
-
-use super::channel::*;
-use super::frame::*;
-use super::protocol::*;
+//! High-level API for an SA430 device.
+//!
+//! [`Sa430`] wraps a [`Channel`] and exposes the device functionality (identification, LED, reset, calibration data)
+//! as plain methods. Calibration data is decoded into [`Calibration`].
+use crate::channel::{Channel, SerialPortChannel};
+use crate::error::{Error, Result};
+use crate::frame::Command;
 use crate::parser::ByteArrayParser;
+use crate::protocol::*;
 
-/// Start address of the calibration data in the flash memory.
+/// Start address of the program header (describes the calibration block) in flash memory.
 const FLASH_PROG_HEADER_ADDR: u16 = 0xD400;
 
-/// Size of the calibration data in the flash memory.
+/// Size of the program header in flash memory.
 const FLASH_PROG_HEADER_SIZE: u16 = 0x000A;
 
-/// Expected type of the calibration data in the flash memory.
+/// Memory type the program header must declare for the calibration block.
 const FLASH_PROG_HEADER_TYPE: u16 = 0x003E;
 
-/// Start address of the calibration data in the flash memory.
+/// Start address of the calibration data in flash memory.
 const FLASH_CALIBRATION_ADDR: u16 = 0xD40A;
 
-/// Size of the calibration data in the flash memory.
+/// Size of the calibration data in flash memory.
 const FLASH_CALIBRATION_SIZE: u16 = 0x0687;
 
-/// Represents a frequency range with start and stop frequencies and number of samples.
+/// A frequency range with start and stop frequencies and number of samples.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FrequencyRange {
     /// Start frequency in Hz.
-    f_start: u32,
+    pub f_start: u32,
     /// Stop frequency in Hz.
-    f_stop: u32,
+    pub f_stop: u32,
     /// Number of samples.
-    samples: u32,
+    pub samples: u32,
 }
 
-impl From<&[u8; 12]> for FrequencyRange {
-    fn from(value: &[u8; 12]) -> Self {
-        Self {
-            f_start: u32::from_be_bytes(value[0..4].try_into().unwrap()),
-            f_stop: u32::from_be_bytes(value[4..8].try_into().unwrap()),
-            samples: u32::from_be_bytes(value[8..12].try_into().unwrap()),
-        }
+impl FrequencyRange {
+    fn parse(parser: &mut ByteArrayParser) -> Result<Self> {
+        Ok(Self {
+            f_start: parser.take_u32()?,
+            f_stop: parser.take_u32()?,
+            samples: parser.take_u32()?,
+        })
     }
 }
 
-/// Represents a reference level with value and gain.
+/// A reference level with its gain setting.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct RefLevel {
     /// Reference level value.
-    value: u8,
+    pub value: u8,
     /// Gain value.
-    gain: u8,
+    pub gain: u8,
 }
 
-impl From<&[u8; 2]> for RefLevel {
-    fn from(value: &[u8; 2]) -> Self {
-        Self {
-            value: value[0],
-            gain: value[1],
-        }
+impl RefLevel {
+    fn parse(parser: &mut ByteArrayParser) -> Result<Self> {
+        Ok(Self {
+            value: parser.take_u8()?,
+            gain: parser.take_u8()?,
+        })
     }
 }
 
-/// Represents a frequency gain with reference level index and array of gain values.
+/// Gain correction polynomial for one reference level.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct FrequencyGain {
     /// Reference level index.
-    ref_level_index: u8,
-    /// Array of gain values.
-    gains: [f64; 8],
+    pub ref_level_index: u8,
+    /// Gain values.
+    pub gains: [f64; 8],
 }
 
-impl From<&[u8; 65]> for FrequencyGain {
-    fn from(value: &[u8; 65]) -> Self {
-        let ref_level_index = value[0];
+impl FrequencyGain {
+    fn parse(parser: &mut ByteArrayParser) -> Result<Self> {
+        let ref_level_index = parser.take_u8()?;
         let mut gains = [0.0; 8];
-
-        for (i, gain) in gains.iter_mut().enumerate() {
-            let offset = 1 + i * 8;
-            let bytes: [u8; 8] = value[offset..offset + 8].try_into().unwrap();
-            *gain = f64::from_be_bytes(bytes);
+        for gain in gains.iter_mut() {
+            *gain = parser.take_f64()?;
         }
-
-        Self { ref_level_index, gains }
+        Ok(Self { ref_level_index, gains })
     }
 }
 
-/// Represents the calibration data of the device.
+/// Calibration data stored in the device flash.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Calibration {
     /// Hardware ID.
@@ -101,7 +100,7 @@ pub struct Calibration {
     /// Production side.
     pub production_side: u8,
 
-    /// Calibration date.
+    /// Calibration date, as a NUL padded ASCII string.
     pub calibration_date: [u8; 16],
 
     /// Crystal frequency in Hz.
@@ -122,40 +121,54 @@ pub struct Calibration {
     /// Frequency ranges.
     pub frq_ranges: [FrequencyRange; 3],
 
-    /// Frequency gains tables.
+    /// Frequency gains tables, one per frequency range.
     pub frq_gains_tables: [[FrequencyGain; 8]; 3],
 }
 
-impl TryFrom<&[u8]> for Calibration {
-    type Error = Box<dyn std::error::Error>;
+impl Calibration {
+    /// Format version as `major.minor`.
+    pub fn version(&self) -> String {
+        format_version(self.format_version)
+    }
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    /// Calibration date as text, without the NUL padding.
+    pub fn date(&self) -> String {
+        String::from_utf8_lossy(&self.calibration_date)
+            .trim_end_matches('\0')
+            .to_string()
+    }
+}
+
+impl TryFrom<&[u8]> for Calibration {
+    type Error = Error;
+
+    fn try_from(value: &[u8]) -> Result<Self> {
         let mut cal = Calibration::default();
         let mut parser = ByteArrayParser::new(value);
 
         cal.format_version = parser.take_u16()?;
-        cal.calibration_date = parser.take_bytes(16)?.try_into()?;
+        cal.calibration_date = parser.take_array()?;
         cal.software_version = parser.take_u16()?;
         cal.production_side = parser.take_u8()?;
 
-        for i in 0..3 {
-            cal.frq_ranges[i] = FrequencyRange::from(&parser.take_bytes(12)?.try_into()?);
+        for range in cal.frq_ranges.iter_mut() {
+            *range = FrequencyRange::parse(&mut parser)?;
         }
 
-        for i in 0..8 {
-            cal.ref_levels[i] = RefLevel::from(&parser.take_bytes(2)?.try_into()?);
+        for level in cal.ref_levels.iter_mut() {
+            *level = RefLevel::parse(&mut parser)?;
         }
 
         cal.hardware_id = parser.take_u32()?;
-        cal.serial_number = parser.take_bytes(16)?.try_into()?;
+        cal.serial_number = parser.take_array()?;
         cal.xtal_freq_hz = parser.take_u32()?;
         cal.xtal_freq_error_ppm = parser.take_u16()?;
-        cal.calibration_temperature_start = parser.take_bytes(6)?.try_into()?;
-        cal.calibration_temperature_stop = parser.take_bytes(6)?.try_into()?;
+        cal.calibration_temperature_start = parser.take_array()?;
+        cal.calibration_temperature_stop = parser.take_array()?;
 
-        for i in 0..3 {
-            for j in 0..8 {
-                cal.frq_gains_tables[i][j] = FrequencyGain::from(&parser.take_bytes(65)?.try_into()?);
+        for table in cal.frq_gains_tables.iter_mut() {
+            for gain in table.iter_mut() {
+                *gain = FrequencyGain::parse(&mut parser)?;
             }
         }
 
@@ -163,7 +176,7 @@ impl TryFrom<&[u8]> for Calibration {
     }
 }
 
-/// Represents a program header in the flash memory.
+/// Program header in flash memory. Unlike the rest of the protocol, it is stored little-endian (MSP430 native order).
 #[allow(dead_code)]
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct ProgHeader {
@@ -174,24 +187,26 @@ struct ProgHeader {
     pub crc: u16,
 }
 
-impl From<&[u8]> for ProgHeader {
-    fn from(bytes: &[u8]) -> Self {
-        ProgHeader {
-            mem_start_address: u16::from_le_bytes([bytes[0], bytes[1]]),
-            mem_length: u16::from_le_bytes([bytes[2], bytes[3]]),
-            mem_type: u16::from_le_bytes([bytes[4], bytes[5]]),
-            type_version: u16::from_le_bytes([bytes[6], bytes[7]]),
-            crc: u16::from_le_bytes([bytes[8], bytes[9]]),
-        }
+impl TryFrom<&[u8]> for ProgHeader {
+    type Error = Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self> {
+        let mut parser = ByteArrayParser::new(bytes);
+        Ok(ProgHeader {
+            mem_start_address: parser.take_u16_le()?,
+            mem_length: parser.take_u16_le()?,
+            mem_type: parser.take_u16_le()?,
+            type_version: parser.take_u16_le()?,
+            crc: parser.take_u16_le()?,
+        })
     }
 }
 
 /// SA430 device proxy.
 ///
-/// This class provides a high-level API to access the device functionality, such as reading the device information,
-/// calibration data, and spectrum data.
-/// The device is initialized with a channel that provides the communication link with the device, usually a serial port,
-/// but it can be any other type of channel that implements the `Channel` trait.
+/// Provides a high-level API to the device functionality, such as reading the device information and calibration
+/// data. The device talks over a [`Channel`], usually a serial port (see [`Sa430::open`]), but any `Read + Write`
+/// type works, which makes it easy to test.
 ///
 /// # Note
 ///  - All methods are blocking.
@@ -209,79 +224,133 @@ impl Sa430 {
         }
     }
 
+    /// Opens the device connected to serial port `port_name`.
+    pub fn open(port_name: &str) -> Result<Self> {
+        Ok(Self::new(Box::new(SerialPortChannel::new(port_name)?)))
+    }
+
     /// Gets the device identification string.
-    pub fn idn(&mut self) -> Result<String, Box<dyn Error>> {
+    pub fn idn(&mut self) -> Result<String> {
         get_string(self.channel.as_mut(), Command::GetIdn)
     }
 
-    /// Gets the device model.
-    pub fn serial_number(&mut self) -> Result<u32, Box<dyn Error>> {
+    /// Gets the hardware serial number.
+    pub fn serial_number(&mut self) -> Result<u32> {
         get_u32(self.channel.as_mut(), Command::GetSerialNumber)
     }
 
-    /// Gets the device model.
-    pub fn core_version(&mut self) -> Result<String, Box<dyn Error>> {
-        get_u16(self.channel.as_mut(), Command::GetCoreVersion).map(|v| (format!("{}.{}", v >> 8, v & 0xFF)))
+    /// Gets the core firmware version as `major.minor`.
+    pub fn core_version(&mut self) -> Result<String> {
+        get_u16(self.channel.as_mut(), Command::GetCoreVersion).map(format_version)
     }
 
-    /// Gets the device model.
-    pub fn spectrum_version(&mut self) -> Result<String, Box<dyn Error>> {
-        get_u16(self.channel.as_mut(), Command::GetSpectrumVersion).map(|v| (format!("{}.{}", v >> 8, v & 0xFF)))
+    /// Gets the spectrum firmware version as `major.minor`.
+    pub fn spectrum_version(&mut self) -> Result<String> {
+        get_u16(self.channel.as_mut(), Command::GetSpectrumVersion).map(format_version)
     }
 
-    /// Blink the device LED.
-    pub fn blink(&mut self) -> Result<(), Box<dyn Error>> {
+    /// Blinks the device LED, to identify it.
+    pub fn blink(&mut self) -> Result<()> {
         exec(self.channel.as_mut(), Command::BlinkLed)
     }
 
-    /// Reboot the device.
-    pub fn reboot(&mut self) -> Result<(), Box<dyn Error>> {
+    /// Performs a hardware reset.
+    pub fn reboot(&mut self) -> Result<()> {
         exec(self.channel.as_mut(), Command::HardwareReset)
     }
 
     /// Gets the device calibration data.
     ///
-    /// Result is cached for subsequent calls.
-    pub fn calibration(&mut self) -> Result<&Calibration, Box<dyn Error>> {
+    /// The data is read from flash on the first call and cached for subsequent calls.
+    pub fn calibration(&mut self) -> Result<&Calibration> {
         if self.calibration.is_none() {
             self.calibration = Some(self.fetch_calibration()?);
         }
 
-        return Ok(self.calibration.as_ref().unwrap());
+        Ok(self.calibration.as_ref().expect("calibration was just fetched"))
     }
 
-    /// Prettifies the calibration data version.
-    pub fn calibration_version(&mut self) -> Result<String, Box<dyn Error>> {
-        self.calibration()
-            .map(|c| format!("{}.{}", c.format_version >> 8, c.format_version & 0xFF))
-    }
-
-    /// Prettifies the calibration data date.
-    pub fn calibration_date(&mut self) -> Result<String, Box<dyn Error>> {
-        self.calibration()
-            .map(|c| String::from_utf8_lossy(&c.calibration_date).to_string())
-    }
-
-    fn fetch_calibration(&mut self) -> Result<Calibration, Box<dyn Error>> {
+    fn fetch_calibration(&mut self) -> Result<Calibration> {
         self.check_prog_header()?;
-        self.read_calibration()
+        let data = read_flash(self.channel.as_mut(), FLASH_CALIBRATION_ADDR, FLASH_CALIBRATION_SIZE)?;
+        Calibration::try_from(data.as_slice())
     }
 
-    fn check_prog_header(&mut self) -> Result<(), Box<dyn Error>> {
-        let prog_header_vec = read_flash(self.channel.as_mut(), FLASH_PROG_HEADER_ADDR, FLASH_PROG_HEADER_SIZE)?;
-        let prog_header: ProgHeader = prog_header_vec.as_slice().into();
+    fn check_prog_header(&mut self) -> Result<()> {
+        let data = read_flash(self.channel.as_mut(), FLASH_PROG_HEADER_ADDR, FLASH_PROG_HEADER_SIZE)?;
+        let prog_header = ProgHeader::try_from(data.as_slice())?;
         if prog_header.mem_type != FLASH_PROG_HEADER_TYPE {
-            let message = format!(
-                "Invalid flash memory type, expected: {}, got: {}",
+            return Err(Error::InvalidData(format!(
+                "invalid flash memory type, expected: 0x{:04X}, got: 0x{:04X}",
                 FLASH_PROG_HEADER_TYPE, prog_header.mem_type
-            );
-            return Err(message.into());
+            )));
         }
         Ok(())
     }
+}
 
-    fn read_calibration(&mut self) -> Result<Calibration, Box<dyn Error>> {
-        let calibration_vec = read_flash(self.channel.as_mut(), FLASH_CALIBRATION_ADDR, FLASH_CALIBRATION_SIZE)?;
-        calibration_vec.as_slice().try_into()
+/// Formats a version word as `major.minor` (high byte, low byte).
+fn format_version(version: u16) -> String {
+    format!("{}.{}", version >> 8, version & 0xFF)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::*;
+
+    fn a_device_with(channel: MockChannel) -> Sa430 {
+        Sa430::new(Box::new(channel))
+    }
+
+    #[test]
+    fn given_a_device_when_core_version_then_format_as_major_minor() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::GetCoreVersion));
+        channel.add_response(&a_get_core_version_response());
+
+        assert_eq!(a_device_with(channel).core_version().unwrap(), "2.10");
+    }
+
+    #[test]
+    fn given_a_device_when_calibration_then_decode_flash_data() {
+        let mut channel = MockChannel::new();
+        add_calibration_responses(&mut channel);
+        let mut device = a_device_with(channel);
+
+        let calibration = device.calibration().unwrap();
+
+        assert_eq!(calibration.version(), "1.16");
+        assert_eq!(calibration.date(), "Mo. Sep 19 2011");
+        assert_eq!(calibration.hardware_id, 0x0908);
+        assert_eq!(&calibration.serial_number, b"08FF41E50F8B3A34");
+    }
+
+    #[test]
+    fn given_calibration_was_read_when_calibration_again_then_use_the_cache() {
+        let mut channel = MockChannel::new();
+        add_calibration_responses(&mut channel);
+        let mut device = a_device_with(channel);
+
+        let first = device.calibration().unwrap().clone();
+        // No more responses are queued: a second flash read would time out.
+        assert_eq!(device.calibration().unwrap(), &first);
+    }
+
+    #[test]
+    fn given_a_wrong_prog_header_type_when_calibration_then_return_error() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::FlashRead));
+        channel.add_response(&a_read_flash_response(&[0, 212, 212, 6, 63, 0, 0, 2, 2, 18]));
+
+        let result = a_device_with(channel).calibration().map(|_| ());
+
+        assert!(matches!(result, Err(Error::InvalidData(_))));
+    }
+
+    #[test]
+    fn given_truncated_data_when_parse_calibration_then_return_error() {
+        let result = Calibration::try_from(&[0u8; 100][..]);
+        assert!(matches!(result, Err(Error::InvalidData(_))));
     }
 }

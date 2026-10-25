@@ -1,37 +1,29 @@
-use udev::Enumerator;
-
+use crate::error::Result;
 use crate::port::Port;
 use crate::scanner::Scanner;
 
 use super::udev_utils::*;
 
+/// Scanner based on udev, which also reports the USB firmware revision.
+#[derive(Debug, Default)]
 pub struct LinuxScanner;
 
 impl LinuxScanner {
     pub fn new() -> Self {
         LinuxScanner
     }
-
-    fn enumerator(&self) -> Enumerator {
-        let mut enumerator = Enumerator::new().expect("Failed to create udev enumerator");
-
-        enumerator
-            .match_subsystem("tty")
-            .expect("Failed to match tty subsystem");
-
-        enumerator
-    }
 }
 
 impl Scanner for LinuxScanner {
-    fn scan(&self) -> Vec<Port> {
-        return self
-            .enumerator()
-            .scan_devices()
-            .expect("Failed to scan devices")
+    fn scan(&self) -> Result<Vec<Port>> {
+        let mut enumerator = udev::Enumerator::new()?;
+        enumerator.match_subsystem("tty")?;
+
+        Ok(enumerator
+            .scan_devices()?
             .filter(is_sa430)
-            .map(port_from_device)
-            .collect();
+            .filter_map(|device| port_from_device(&device))
+            .collect())
     }
 }
 
@@ -40,8 +32,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn should_scan_without_panicking() {
+    fn should_scan_without_error() {
         let scanner = LinuxScanner::new();
-        scanner.scan();
+        scanner.scan().unwrap();
     }
 }

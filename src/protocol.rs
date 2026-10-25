@@ -1,112 +1,110 @@
 //! # Protocol Module
 //!
-//! The `protocol` module provides a set of functions to facilitate communication with a device over a specified channel.
-//! It includes utilities for sending commands, receiving responses, and handling data in various formats.
-//! The module ensures that the communication protocol is adhered to, validating responses and parsing data as needed.
+//! Request/response exchange with the device on top of [`Frame`]s.
 //!
-//! It is designed to abstract the complexities of device communication, providing a simple interface for common
-//! operations that return different types of data. It handles the low-level details of frame construction,
-//! transmission, and validation, allowing users to focus on higher-level logic.
-use std::{
-    error::Error,
-    io::{Read, Write},
-};
+//! Every command sent to the device is first answered with an **acknowledge** frame carrying the same command. Commands
+//! that return data are then followed by a **response** frame, again carrying the same command. Either frame may be
+//! replaced by an error frame ([`Command::GetLastError`]), which is turned into [`Error::Device`].
+use std::io::{Read, Write};
 
-use super::channel::*;
-use super::frame::*;
-use super::parser::*;
+use crate::channel::Channel;
+use crate::error::{Error, Result};
+use crate::frame::*;
+use crate::parser::ByteArrayParser;
 
 /// Sends a command to the device and returns the response as a string.
-pub fn get_string(channel: &mut dyn Channel, command: Command) -> Result<String, Box<dyn Error>> {
+pub fn get_string(channel: &mut dyn Channel, command: Command) -> Result<String> {
     let result = exec_with_result(channel, command)?;
-    let value = String::from_utf8(result)?;
-    Ok(value)
+    String::from_utf8(result).map_err(|e| Error::InvalidData(format!("response is not valid UTF-8: {}", e)))
 }
 
 /// Sends a command to the device and returns the response as a `u32`.
-pub fn get_u32(channel: &mut dyn Channel, command: Command) -> Result<u32, Box<dyn Error>> {
+pub fn get_u32(channel: &mut dyn Channel, command: Command) -> Result<u32> {
     let result = exec_with_result(channel, command)?;
-    let mut parser = ByteArrayParser::new(&result);
-    parser.take_u32()
+    ByteArrayParser::new(&result).take_u32()
 }
 
 /// Sends a command to the device and returns the response as a `u16`.
-pub fn get_u16(channel: &mut dyn Channel, command: Command) -> Result<u16, Box<dyn Error>> {
+pub fn get_u16(channel: &mut dyn Channel, command: Command) -> Result<u16> {
     let result = exec_with_result(channel, command)?;
-    let mut parser = ByteArrayParser::new(&result);
-    parser.take_u16()
+    ByteArrayParser::new(&result).take_u16()
 }
 
-/// Reads a block of data from the device's flash memory starting at the specified address and of the specified size.
-pub fn read_flash(channel: &mut dyn Channel, addr: u16, size: u16) -> Result<Vec<u8>, Box<dyn Error>> {
+/// Reads `size` bytes of the device's flash memory starting at `addr`.
+///
+/// Requests are split into chunks of at most [`FRAME_MAX_DATA_SIZE`] bytes.
+pub fn read_flash(channel: &mut dyn Channel, addr: u16, size: u16) -> Result<Vec<u8>> {
     let mut pointer = addr;
     let mut remains = size;
-    let mut buffer = Vec::new();
+    let mut buffer = Vec::with_capacity(size as usize);
 
     while remains > 0 {
-        let chunk_size = if remains > 255 { 255 } else { remains };
-        let data: Vec<u8> = [pointer.to_be_bytes(), chunk_size.to_be_bytes()].concat();
-        let request = Frame::with_data(Command::FlashRead, &data);
-        send_frame(&request, channel.writer())?;
+        let chunk_size = remains.min(FRAME_MAX_DATA_SIZE as u16);
+        let data = [pointer.to_be_bytes(), chunk_size.to_be_bytes()].concat();
+        let request = Frame::with_data(Command::FlashRead, &data)?;
+        let response = transact(channel, &request, true)?;
 
-        let ack = receive_frame(channel.reader())?;
-        validate(&request, &ack)?;
+        // Shorter responses are an error. Longer ones are tolerated (the final chunk may be padded) and truncated.
+        let Some(chunk) = response.data().get(..chunk_size as usize) else {
+            return Err(Error::InvalidData(format!(
+                "flash read at 0x{:04X} returned {} bytes, expected {}",
+                pointer,
+                response.data().len(),
+                chunk_size
+            )));
+        };
 
-        let response = receive_frame(channel.reader())?;
-        validate(&request, &response)?;
-
-        buffer.extend_from_slice(response.data());
+        buffer.extend_from_slice(chunk);
         remains -= chunk_size;
-        pointer += chunk_size;
+        pointer = pointer.wrapping_add(chunk_size);
     }
 
     Ok(buffer)
 }
 
 /// Executes a command that has no result.
-pub fn exec(channel: &mut dyn Channel, command: Command) -> Result<(), Box<dyn Error>> {
-    let request = Frame::new(command);
-    send_frame(&request, channel.writer())?;
-
-    let ack = receive_frame(channel.reader())?;
-    validate(&request, &ack)?;
-
+pub fn exec(channel: &mut dyn Channel, command: Command) -> Result<()> {
+    transact(channel, &Frame::new(command), false)?;
     Ok(())
 }
 
-/// Executes a command and returns the response as a byte vector.
-pub fn exec_with_result(channel: &mut dyn Channel, command: Command) -> Result<Vec<u8>, Box<dyn Error>> {
-    let request = Frame::new(command);
-    send_frame(&request, channel.writer())?;
-
-    let ack = receive_frame(channel.reader())?;
-    validate(&request, &ack)?;
-
-    let response = receive_frame(channel.reader())?;
-    validate(&request, &response)?;
-
+/// Executes a command and returns the response payload.
+pub fn exec_with_result(channel: &mut dyn Channel, command: Command) -> Result<Vec<u8>> {
+    let response = transact(channel, &Frame::new(command), true)?;
     Ok(response.data().to_vec())
 }
 
+/// Sends `request`, waits for its acknowledge and, if `has_response`, for its response frame (which is returned).
+/// Otherwise the acknowledge frame is returned.
+fn transact(channel: &mut dyn Channel, request: &Frame, has_response: bool) -> Result<Frame> {
+    send_frame(request, channel)?;
+
+    let ack = receive_frame(channel)?;
+    validate(request, &ack)?;
+
+    if !has_response {
+        return Ok(ack);
+    }
+
+    let response = receive_frame(channel)?;
+    validate(request, &response)?;
+    Ok(response)
+}
+
 /// Validates the response frame against the request frame.
-fn validate(request: &Frame, response: &Frame) -> Result<(), Box<dyn Error>> {
-    if response.is_error() {
-        let message = format!(
-            "Error executing command {}: {} ({:04X})",
-            request.cmd(),
-            response.to_error_code().unwrap(),
-            response.to_error_code().unwrap()
-        );
-        return Err(Box::from(message));
+fn validate(request: &Frame, response: &Frame) -> Result<()> {
+    if let Some(code) = response.to_error_code() {
+        return Err(Error::Device {
+            command: request.cmd(),
+            code,
+        });
     }
 
     if request.cmd() != response.cmd() {
-        let message = format!(
-            "Invalid response, expected: {:?}, received: {:?}",
-            request.cmd(),
-            response.cmd()
-        );
-        return Err(Box::from(message));
+        return Err(Error::UnexpectedResponse {
+            expected: request.cmd(),
+            received: response.cmd(),
+        });
     }
 
     Ok(())
@@ -121,14 +119,16 @@ enum ReceiverState {
     CrcLow,
 }
 
-fn send_frame(frame: &Frame, port: &mut dyn Write) -> Result<(), Box<dyn Error>> {
+fn send_frame(frame: &Frame, port: &mut dyn Write) -> Result<()> {
     port.write_all(&frame.to_bytes())?;
+    port.flush()?;
     Ok(())
 }
 
-fn receive_frame(port: &mut dyn Read) -> Result<Frame, Box<dyn Error>> {
+/// Reads bytes until a complete frame is received, skipping anything before the magic byte.
+fn receive_frame(port: &mut dyn Read) -> Result<Frame> {
     let mut state = ReceiverState::Start;
-    let mut buffer: [u8; 260] = [0; 260];
+    let mut buffer = [0u8; FRAME_MAX_SIZE];
     let mut index: usize = 0;
 
     loop {
@@ -172,7 +172,7 @@ fn receive_frame(port: &mut dyn Read) -> Result<Frame, Box<dyn Error>> {
     Ok(frame)
 }
 
-fn read(port: &mut dyn Read) -> Result<u8, Box<dyn Error>> {
+fn read(port: &mut dyn Read) -> Result<u8> {
     let mut byte = [0; 1];
     port.read_exact(byte.as_mut())?;
     Ok(byte[0])
@@ -182,15 +182,14 @@ fn read(port: &mut dyn Read) -> Result<u8, Box<dyn Error>> {
 mod tests {
     use super::*;
 
-    use crate::channel::fixtures::MockChannel;
-    use crate::frame::fixture::*;
+    use crate::test_utils::*;
 
     #[test]
     fn given_a_channel_and_a_command_when_get_string_then_return_the_string() {
         let mut channel = MockChannel::new();
 
-        channel.add_response(&an_ack_response(Command::GetIdn).to_bytes());
-        channel.add_response(&a_get_idn_response().to_bytes());
+        channel.add_response(&an_ack_response(Command::GetIdn));
+        channel.add_response(&a_get_idn_response());
 
         let result = get_string(&mut channel, Command::GetIdn).unwrap();
 
@@ -202,8 +201,8 @@ mod tests {
     fn given_a_channel_and_a_command_when_get_u32_then_return_the_value() {
         let mut channel: MockChannel = MockChannel::new();
 
-        channel.add_response(&an_ack_response(Command::GetSerialNumber).to_bytes());
-        channel.add_response(&a_get_serial_number_response().to_bytes());
+        channel.add_response(&an_ack_response(Command::GetSerialNumber));
+        channel.add_response(&a_get_serial_number_response());
 
         let result = get_u32(&mut channel, Command::GetSerialNumber).unwrap();
 
@@ -218,8 +217,8 @@ mod tests {
         let data = vec![0x01; size as usize];
         let mut channel = MockChannel::new();
 
-        channel.add_response(&an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&a_read_flash_response(&data).to_bytes());
+        channel.add_response(&an_ack_response(Command::FlashRead));
+        channel.add_response(&a_read_flash_response(&data));
 
         let result = read_flash(&mut channel, addr, size).unwrap();
 
@@ -239,12 +238,12 @@ mod tests {
         let data_155 = vec![0x01; 155];
         let mut channel = MockChannel::new();
 
-        channel.add_response(&an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&a_read_flash_response(&data_255).to_bytes());
-        channel.add_response(&an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&a_read_flash_response(&data_255).to_bytes());
-        channel.add_response(&an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&a_read_flash_response(&data_155).to_bytes());
+        channel.add_response(&an_ack_response(Command::FlashRead));
+        channel.add_response(&a_read_flash_response(&data_255));
+        channel.add_response(&an_ack_response(Command::FlashRead));
+        channel.add_response(&a_read_flash_response(&data_255));
+        channel.add_response(&an_ack_response(Command::FlashRead));
+        channel.add_response(&a_read_flash_response(&data_155));
 
         let result = read_flash(&mut channel, addr, size).unwrap();
 
@@ -260,7 +259,7 @@ mod tests {
 
     #[test]
     fn given_a_frame_when_send_frame_then_send_frame_to_port() {
-        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]);
+        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]).unwrap();
         let mut port = Vec::new();
         send_frame(&frame, &mut port).unwrap();
         assert_eq!(port, vec![0x2a, 0x02, 0x1B, 0x00, 0x01, 0x0F, 0xDC]);
@@ -268,7 +267,7 @@ mod tests {
 
     #[test]
     fn given_a_frame_when_receive_frame_then_receive_frame_from_port() {
-        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]);
+        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]).unwrap();
         let mut port = Vec::new();
         port.write_all(&frame.to_bytes()).unwrap();
         let received_frame = receive_frame(&mut port.as_slice()).unwrap();
@@ -277,7 +276,7 @@ mod tests {
 
     #[test]
     fn given_a_frame_with_no_data_when_receive_frame_then_receive_frame_from_port() {
-        let frame = Frame::with_data(Command::BlinkLed, &[]);
+        let frame = Frame::new(Command::BlinkLed);
         let mut port = Vec::new();
         port.write_all(&frame.to_bytes()).unwrap();
         let received_frame = receive_frame(&mut port.as_slice()).unwrap();
@@ -286,7 +285,7 @@ mod tests {
 
     #[test]
     fn given_a_frame_when_receive_frame_then_receive_frame_from_port_with_extra_bytes() {
-        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]);
+        let frame = Frame::with_data(Command::SetGain, &[0x00, 0x01]).unwrap();
         let mut port = Vec::new();
         port.write_all(&[0x00, 0x00, 0x00]).unwrap();
         port.write_all(&frame.to_bytes()).unwrap();
@@ -299,9 +298,72 @@ mod tests {
         let port = vec![0x2A, 0x00, 0x00, 0x00, 0x01];
         let result = receive_frame(&mut port.as_slice());
         assert!(result.is_err());
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Invalid CRC, expected: 0x0001, current: 0x8528"
-        );
+        assert!(matches!(
+            result.unwrap_err(),
+            Error::Frame(FrameError::InvalidCrc(0x0001, 0x8528))
+        ));
+    }
+
+    #[test]
+    fn given_an_error_frame_instead_of_ack_when_exec_then_return_device_error() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_error_response(ErrorCode::UnknownCmd as u16));
+
+        let result = exec(&mut channel, Command::BlinkLed);
+
+        assert!(matches!(
+            result.unwrap_err(),
+            Error::Device {
+                command: Command::BlinkLed,
+                code: ErrorCode::UnknownCmd
+            }
+        ));
+    }
+
+    #[test]
+    fn given_an_ack_for_another_command_when_exec_then_return_unexpected_response() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::GetIdn));
+
+        let result = exec(&mut channel, Command::BlinkLed);
+
+        assert!(matches!(
+            result.unwrap_err(),
+            Error::UnexpectedResponse {
+                expected: Command::BlinkLed,
+                received: Command::GetIdn
+            }
+        ));
+    }
+
+    #[test]
+    fn given_no_response_when_exec_then_return_io_error() {
+        let mut channel = MockChannel::new();
+
+        let result = exec(&mut channel, Command::BlinkLed);
+
+        assert!(matches!(result.unwrap_err(), Error::Io(e) if e.kind() == std::io::ErrorKind::TimedOut));
+    }
+
+    #[test]
+    fn given_a_short_flash_read_response_when_read_flash_then_return_error() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::FlashRead));
+        channel.add_response(&a_read_flash_response(&[0x01; 3]));
+
+        let result = read_flash(&mut channel, 0x1000, 4);
+
+        assert!(matches!(result.unwrap_err(), Error::InvalidData(_)));
+    }
+
+    #[test]
+    fn given_a_padded_flash_read_response_when_read_flash_then_truncate_to_requested_size() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::FlashRead));
+        channel.add_response(&a_read_flash_response(&[0x01, 0x02, 0xFF, 0xFF]));
+
+        let result = read_flash(&mut channel, 0x1000, 2).unwrap();
+
+        assert_eq!(result, vec![0x01, 0x02]);
     }
 }

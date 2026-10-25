@@ -1,44 +1,36 @@
 mod cli;
 
+use std::process::ExitCode;
+
 use clap::{Parser, Subcommand};
-use cli::capture::capture;
-use cli::capture::CaptureParams;
-use cli::watch::PrinterEventHandler;
-use sa430::create_monitor;
-use std::error::Error;
 
-use cli::blink::blink;
-use cli::info::info;
-use cli::reboot::reboot;
-use cli::scan::scan;
-use cli::watch::watch;
-
-use sa430::channel::SerialPortChannel;
-use sa430::create_scanner;
-use sa430::device::Sa430;
+use cli::capture::{capture, CaptureParams};
+use cli::{blink::blink, info::info, reboot::reboot, scan::scan, watch::watch, CliResult};
+use sa430::{create_monitor, create_scanner, Sa430};
 
 #[derive(Parser)]
 #[command(version)]
 #[command(about = "Sa430 Command Line Interface Utility")]
+#[command(subcommand_required = true, arg_required_else_help = true)]
 struct Cli {
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
 #[derive(Subcommand)]
 enum Commands {
     #[command(about = "Scan for connected SA430 devices")]
     #[command(short_flag = 's')]
-    Scan {},
+    Scan,
 
     #[command(about = "Monitor for connected SA430 devices")]
     #[command(short_flag = 'w')]
-    Watch {},
+    Watch,
 
     #[command(about = "Read device information")]
     #[command(short_flag = 'i')]
     Info {
-        #[arg(help = "The port to read device information from")]
+        #[arg(help = "Serial port to use")]
         port: String,
     },
 
@@ -56,86 +48,58 @@ enum Commands {
         port: String,
     },
 
-    #[command(about = "Capture a spectrum")]
+    #[command(about = "Capture a spectrum (not implemented yet)")]
     #[command(short_flag = 'c')]
     Capture {
         #[arg(help = "Serial port to use")]
         port: String,
-        #[arg(long)]
-        #[arg(help = "The frequency to start capturing at, in MHz")]
+        #[arg(long, help = "The frequency to start capturing at, in MHz")]
         fstart: f64,
-        #[arg(long)]
         #[arg(long, help = "The frequency to stop capturing at, in MHz")]
         fstop: f64,
-        #[arg(long)]
         #[arg(long, help = "The frequency to step by, in MHz")]
         fstep: f64,
-        #[arg(long = "rlevel")]
+        #[arg(long = "rlevel", allow_negative_numbers = true)]
         #[arg(help = "Maximum signal power before saturation, in dBm. Default is -35 dBm")]
-        #[arg(long_help = "Must be one of -35,-40, -45, -50, -55, -60, -65 or -70 dBm")]
+        #[arg(long_help = "Must be one of -35, -40, -45, -50, -55, -60, -65 or -70 dBm")]
         ref_level: Option<i8>,
     },
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let cli = Cli::parse();
+fn main() -> ExitCode {
+    match run(Cli::parse()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("error: {}", error);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run(cli: Cli) -> CliResult {
+    let mut stdout = std::io::stdout();
 
     match cli.command {
-        Some(Commands::Scan {}) => exec_scan(),
-        Some(Commands::Watch {}) => exec_watch(),
-        Some(Commands::Info { port }) => exec_info(&port),
-        Some(Commands::Blink { port }) => exec_blink(&port),
-        Some(Commands::Reboot { port }) => exec_reboot(&port),
-        Some(Commands::Capture {
+        Commands::Scan => scan(create_scanner().as_ref(), &mut stdout),
+        Commands::Watch => watch(create_monitor()?.as_mut(), &mut stdout),
+        Commands::Info { port } => info(&mut Sa430::open(&port)?, &mut stdout),
+        Commands::Blink { port } => blink(&mut Sa430::open(&port)?, &mut stdout),
+        Commands::Reboot { port } => reboot(&mut Sa430::open(&port)?, &mut stdout),
+        Commands::Capture {
             port,
             fstart,
             fstop,
             fstep,
             ref_level,
-        }) => exec_capture(&port, fstart, fstop, fstep, ref_level),
-        None => panic!("No command provided, use --help for usage"),
+        } => {
+            let params = CaptureParams {
+                fstart,
+                fstop,
+                fstep,
+                ref_level,
+            };
+            params.validate()?;
+            capture(&mut Sa430::open(&port)?, &params, &mut stdout)
+        }
     }
-}
-
-fn exec_scan() -> Result<(), Box<dyn Error>> {
-    scan(create_scanner(), &mut std::io::stdout())?;
-    Ok(())
-}
-
-fn exec_watch() -> Result<(), Box<dyn Error>> {
-    let mut output = std::io::stdout();
-    let mut handler = PrinterEventHandler::new(&mut output);
-    let mut monitor = create_monitor();
-    watch(&mut *monitor, &mut handler)?;
-    Ok(())
-}
-
-fn exec_info(port: &str) -> Result<(), Box<dyn Error>> {
-    let channel = SerialPortChannel::new(port)?;
-    let mut device = Sa430::new(Box::new(channel));
-    info(&mut device, &mut std::io::stdout())
-}
-
-fn exec_blink(port: &str) -> Result<(), Box<dyn Error>> {
-    let channel = SerialPortChannel::new(port)?;
-    let mut device = Sa430::new(Box::new(channel));
-    blink(&mut device, &mut std::io::stdout())
-}
-
-fn exec_reboot(port: &str) -> Result<(), Box<dyn Error>> {
-    let channel = SerialPortChannel::new(port)?;
-    let mut device = Sa430::new(Box::new(channel));
-    reboot(&mut device, &mut std::io::stdout())
-}
-
-fn exec_capture(port: &str, fstart: f64, fstop: f64, fstep: f64, ref_level: Option<i8>) -> Result<(), Box<dyn Error>> {
-    let channel = SerialPortChannel::new(port)?;
-    let mut device = Sa430::new(Box::new(channel));
-    let params = CaptureParams {
-        fstart,
-        fstop,
-        fstep,
-        ref_level,
-    };
-    capture(&mut device, &params, &mut std::io::stdout())
 }

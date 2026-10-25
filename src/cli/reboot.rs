@@ -1,8 +1,10 @@
-use std::{error, io};
+use std::io;
 
-use sa430::device::Sa430;
+use sa430::Sa430;
 
-pub fn reboot(device: &mut Sa430, output: &mut dyn io::Write) -> Result<(), Box<dyn error::Error>> {
+use super::CliResult;
+
+pub fn reboot(device: &mut Sa430, output: &mut dyn io::Write) -> CliResult {
     writeln!(output, "Rebooting device...")?;
     device.reboot()?;
     writeln!(output, "Done!")?;
@@ -14,15 +16,15 @@ mod tests {
     use super::*;
 
     use sa430::{
-        channel::fixtures::MockChannel,
-        frame::{fixture::an_ack_response, Command},
+        frame::Command,
+        test_utils::{an_ack_response, MockChannel},
     };
 
     #[test]
     fn given_a_channel_when_reboot_then_return_ok() {
         let mut output = Vec::new();
         let mut channel = MockChannel::new();
-        channel.add_response(&an_ack_response(Command::HardwareReset).to_bytes());
+        channel.add_response(&an_ack_response(Command::HardwareReset));
 
         let mut device = Sa430::new(Box::new(channel));
 
