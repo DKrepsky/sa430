@@ -36,7 +36,7 @@ Layered, from hardware up:
 - **`device.rs`**: `Sa430`, the high-level API (`Sa430::open(port)` or `Sa430::new(Box<dyn Channel>)`). Calibration data is read from flash (a `ProgHeader`, then a 1671-byte block), decoded into `Calibration`, and cached.
 - **`error.rs`**: a single `Error` enum (`#[non_exhaustive]`) and `Result<T>` alias, used by every public fallible function. Library code must not panic on device or OS input; return an `Error` instead.
 - **Discovery**: `Scanner::scan() -> Result<Vec<Port>>`. `create_scanner()` returns the udev `LinuxScanner` on Linux (it also reports the firmware revision) and the cross-platform `SerialPortScanner` elsewhere. `Monitor::run(&mut dyn EventHandler)` blocks until the handler returns `ControlFlow::Break`. Closures implement `EventHandler`. `create_monitor()` returns `Error::Unsupported` off Linux. udev-specific code (property keys, `poll()` on the non-blocking udev socket) lives only in `src/linux/`.
-- **CLI**: `main.rs` (clap derive) parses arguments, calls `run()`, prints errors as `error: …` and exits 1. Each subcommand lives in `src/cli/<cmd>.rs` as a function taking `&mut Sa430` (or `&dyn Scanner`/`&mut dyn Monitor`) and `&mut dyn io::Write`, returning `CliResult`. That keeps them unit-testable against a buffer. `capture` validates its arguments but is not implemented yet (issue #6).
+- **CLI**: `main.rs` (clap derive) parses arguments, calls `run()`, prints errors as `error: …` and exits 1. Each subcommand lives in `src/cli/<cmd>.rs` as a function taking `&mut Sa430` (or `&dyn Scanner`/`&mut dyn Monitor`) and `&mut dyn io::Write`, returning `CliResult`. That keeps them unit-testable against a buffer.
 
 Adding a device command generally means: add the `Command` variant in `frame.rs` (enum, `Display`, `From<u8>`) → method on `Sa430` using a `protocol` helper → `src/cli/<cmd>.rs` + subcommand in `main.rs` → README usage entry.
 
@@ -45,3 +45,9 @@ Adding a device command generally means: add the `Command` variant in `frame.rs`
 - Test names follow `given_..._when_..._then_...`.
 - Hardware is faked with `sa430::test_utils` (compiled only under `cfg(test)` or the `test-utils` feature). The crate enables that feature for its own tests through a self dev-dependency in `Cargo.toml`, which is how the binary's CLI tests can use it. `MockChannel::add_response(&Frame)` queues frames, and reading past the queue returns a `TimedOut` I/O error like a real port. Queue the ACK before each response (`an_ack_response(cmd)`), or use `add_calibration_responses` for the full calibration read.
 - Scanner and monitor have no hardware-free integration tests (see `NOTES.md`). Their pure logic (`scanner::to_sa430_port`, `linux::monitor::wait_readable`) is unit-tested.
+
+## Workflow
+
+- Every development task must have a GitHub issue. If the human does not provide one, ask whether you should create it before starting.
+- When writing issues, always use the templates in `.github/ISSUE_TEMPLATE/` (currently `feature_request.md`).
+- When development is finished, always open a pull request from a feature branch (never commit to `main`) and link the issue in the PR description with `Closes #<number>`, so the PR and the issue are connected.

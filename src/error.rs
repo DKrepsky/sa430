@@ -31,6 +31,9 @@ pub enum Error {
     /// The response payload could not be decoded.
     InvalidData(String),
 
+    /// A parameter provided by the caller is not valid.
+    InvalidParameter(String),
+
     /// The operation is not available on the current platform.
     Unsupported(&'static str),
 }
@@ -52,6 +55,7 @@ impl fmt::Display for Error {
                 )
             }
             Error::InvalidData(msg) => write!(f, "invalid data: {}", msg),
+            Error::InvalidParameter(msg) => write!(f, "{}", msg),
             Error::Unsupported(what) => write!(f, "{} is not supported on this platform", what),
         }
     }

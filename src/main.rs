@@ -4,9 +4,9 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use cli::capture::{capture, CaptureParams};
+use cli::capture::capture;
 use cli::{blink::blink, info::info, reboot::reboot, scan::scan, watch::watch, CliResult};
-use sa430::{create_monitor, create_scanner, Sa430};
+use sa430::{create_monitor, create_scanner, Sa430, SweepRequest};
 
 #[derive(Parser)]
 #[command(version)]
@@ -48,7 +48,7 @@ enum Commands {
         port: String,
     },
 
-    #[command(about = "Capture a spectrum (not implemented yet)")]
+    #[command(about = "Measure the spectrum and print it as CSV (frequency in MHz, power in dBm)")]
     #[command(short_flag = 'c')]
     Capture {
         #[arg(help = "Serial port to use")]
@@ -92,14 +92,8 @@ fn run(cli: Cli) -> CliResult {
             fstep,
             ref_level,
         } => {
-            let params = CaptureParams {
-                fstart,
-                fstop,
-                fstep,
-                ref_level,
-            };
-            params.validate()?;
-            capture(&mut Sa430::open(&port)?, &params, &mut stdout)
+            let request = SweepRequest::new(fstart, fstop, fstep, ref_level)?;
+            capture(&mut Sa430::open(&port)?, &request, &mut stdout)
         }
     }
 }

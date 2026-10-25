@@ -23,6 +23,7 @@ pub mod frame;
 pub mod monitor;
 pub mod port;
 pub mod scanner;
+pub mod spectrum;
 
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;
@@ -39,6 +40,7 @@ pub use error::{Error, Result};
 pub use monitor::{Event, EventHandler, Monitor};
 pub use port::Port;
 pub use scanner::Scanner;
+pub use spectrum::{Measurement, SweepRequest};
 
 /// Creates the best available scanner for the current OS.
 ///
