@@ -5,14 +5,23 @@ on:
     paths:
       - 'src/**'
       - 'tests/**'
+      - 'examples/**'
       - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/ci.yml'
   push:
     branches:
       - main
     paths:
       - 'src/**'
       - 'tests/**'
+      - 'examples/**'
       - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/ci.yml'
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   test:
@@ -20,62 +29,61 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-2019]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Update Rust
         run: rustup update stable
 
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-        with:
-          key: cargo-test-${{ matrix.os }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Install libudev
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y libudev-dev
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run tests
-        run: cargo test
+        run: cargo test --all-targets
+
+      - name: Run doc tests
+        run: cargo test --doc
 
   lint:
     name: Check lint
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Update Rust
         run: rustup update stable
 
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-        with:
-          key: cargo-test-${{ matrix.os }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Install libudev
-        run: sudo apt-get install -y libudev-dev
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Lint
-        run: cargo clippy --all-targets --all-features
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Check docs
+        run: cargo doc --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   format:
     name: Check formatting
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Update Rust
         run: rustup update stable
-
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: cargo-test-${{ matrix.os }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Check formatting
         run: cargo fmt -- --check
@@ -86,18 +94,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Update Rust
         run: rustup update stable
 
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-        with:
-          key: cargo-test-${{ matrix.os }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Install libudev
-        run: sudo apt-get install -y libudev-dev
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov

@@ -1,32 +1,28 @@
-use sa430::port::Port;
-use sa430::scanner::Scanner;
+use std::io;
 
-/// Handles the scan command logic.
-///
-/// Will scan for devices using the provided scanner and print a list of ports where the devices were found using the
-/// provided writer.
-///
-/// # Arguments
-/// * `scanner` - The scanner to use to find the devices.
-/// * `writer` - The writer to output the devices found.
-///
-pub fn scan(scanner: Box<dyn Scanner>, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
-    let ports = scanner.scan();
-    writeln!(writer, "port           | serial number    | version")?;
-    writeln!(writer, "---------------|------------------|--------")?;
+use sa430::{Port, Scanner};
+
+use super::{CliResult, UNKNOWN};
+
+/// Scans for devices using the provided scanner and prints a table of the ports where they were found.
+pub fn scan(scanner: &dyn Scanner, output: &mut dyn io::Write) -> CliResult {
+    let ports = scanner.scan()?;
+    writeln!(output, "port           | serial number    | version")?;
+    writeln!(output, "---------------|------------------|--------")?;
     for port in ports {
-        print_port_information(&port, writer)?;
+        print_port_information(&port, output)?;
     }
-    writeln!(writer, "---------------|------------------|--------")
+    writeln!(output, "---------------|------------------|--------")?;
+    Ok(())
 }
 
-fn print_port_information(port: &Port, writer: &mut dyn std::io::Write) -> std::io::Result<()> {
+fn print_port_information(port: &Port, output: &mut dyn io::Write) -> io::Result<()> {
     writeln!(
-        writer,
+        output,
         "{:14} | {:16} | {:4}",
         port.name(),
-        port.serial_number(),
-        port.firmware_version()
+        port.serial_number().unwrap_or(UNKNOWN),
+        port.firmware_version().unwrap_or(UNKNOWN)
     )
 }
 
@@ -39,44 +35,43 @@ mod tests {
     }
 
     impl Scanner for FakeScanner {
-        fn scan(&self) -> Vec<Port> {
-            self.ports.clone()
+        fn scan(&self) -> sa430::Result<Vec<Port>> {
+            Ok(self.ports.clone())
         }
     }
 
     #[test]
     fn given_a_device_is_connected_when_scan_then_print_port_information() {
-        let writer = &mut Vec::new();
+        let mut output = Vec::new();
         let ports = vec![
-            Port::new("/dev/ttyUSB1", "08FF41E50F8B3A34", "0104"),
-            Port::new("/dev/ttyUSB2", "08FF41E50F8B3A35", "0104"),
-            Port::new("/dev/ttyUSB3", "08FF41E50F8B3A36", "0102"),
+            Port::new("/dev/ttyUSB1", Some("08FF41E50F8B3A34"), Some("0104")),
+            Port::new("/dev/ttyUSB2", Some("08FF41E50F8B3A35"), Some("0104")),
+            Port::new("COM3", Some("08FF41E50F8B3A36"), None),
         ];
         let scanner = FakeScanner { ports };
 
-        scan(Box::new(scanner), writer).unwrap();
+        scan(&scanner, &mut output).unwrap();
 
-        let output = String::from_utf8(writer.to_vec()).unwrap();
+        let output = String::from_utf8(output).unwrap();
         assert_eq!(
             output,
             "port           | serial number    | version\n\
          ---------------|------------------|--------\n\
          /dev/ttyUSB1   | 08FF41E50F8B3A34 | 0104\n\
          /dev/ttyUSB2   | 08FF41E50F8B3A35 | 0104\n\
-         /dev/ttyUSB3   | 08FF41E50F8B3A36 | 0102\n\
+         COM3           | 08FF41E50F8B3A36 | -   \n\
          ---------------|------------------|--------\n"
         );
     }
 
     #[test]
     fn given_no_device_is_connected_when_scan_then_print_no_port_information() {
-        let writer = &mut Vec::new();
-        let ports = vec![];
-        let scanner = FakeScanner { ports };
+        let mut output = Vec::new();
+        let scanner = FakeScanner { ports: vec![] };
 
-        scan(Box::new(scanner), writer).unwrap();
+        scan(&scanner, &mut output).unwrap();
 
-        let output = String::from_utf8(writer.to_vec()).unwrap();
+        let output = String::from_utf8(output).unwrap();
         assert_eq!(
             output,
             "port           | serial number    | version\n\

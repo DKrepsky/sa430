@@ -10,7 +10,8 @@
 
 The **SA430** Rust library provides tools to interact with Texas Instruments SA430 Sub-1 GHz RF spectrum analyzers. It enables scanning, analyzing, and visualizing RF spectrum data. You can use it as a standalone CLI tool or integrate it into your Rust projects.
 
-This library is primarily Unix-compatible, requiring `libudev` for scanning operations. Other features are cross-platform.
+Device communication and scanning work on Linux, Windows and macOS. On Linux, `libudev` is required. Monitoring for
+connect/disconnect events (`watch`) is currently Linux only.
 
 
 ## Installation
@@ -69,26 +70,44 @@ sa430 blink <PORT>
 sa430 reboot <PORT>
 ```
 
+`capture`: Capture a spectrum (work in progress, not implemented yet).
+
+```bash
+sa430 capture <PORT> --fstart 433 --fstop 434 --fstep 0.1 [--rlevel -35]
+```
+
 ### Library Integration
 
 Here’s an example of integrating the library into a Rust project:
 
-```
-use sa430::{create_scanner, Scanner, Port};
+```rust
+use sa430::{create_scanner, Sa430};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let scanner = create_scanner();
-    let ports = scanner.scan();
-
-    for port in ports {
-        println!("Found SA430 at: {}", port.name());
+fn main() -> sa430::Result<()> {
+    for port in create_scanner().scan()? {
+        let mut device = Sa430::open(port.name())?;
+        println!("Found SA430 at {}: {}", port.name(), device.idn()?);
     }
 
     Ok(())
 }
 ```
 
-More examples can be found in the [examples](examples/) folder, like monitoring for port events and taking measurements.
+All fallible functions return `sa430::Result<T>`; match on `sa430::Error` to tell apart I/O errors (including
+timeouts), corrupted frames, errors reported by the device and unsupported operations.
+
+More examples can be found in the [examples](examples/) folder, such as scanning for devices and waiting for a device
+to be connected:
+
+```bash
+cargo run --example scan
+cargo run --example watch
+```
+
+### Testing code that uses this library
+
+Enable the `test-utils` feature in your `dev-dependencies` to get `sa430::test_utils::MockChannel` and canned device
+responses, so you can test without hardware.
 
 ## Troubleshooting
 

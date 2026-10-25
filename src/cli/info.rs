@@ -1,13 +1,18 @@
-use sa430::device::Sa430;
+use std::io;
+
+use sa430::Sa430;
+
+use super::CliResult;
 
 /// Prints the device information to the output.
-pub fn info(device: &mut Sa430, output: &mut dyn std::io::Write) -> Result<(), Box<dyn std::error::Error>> {
+pub fn info(device: &mut Sa430, output: &mut dyn io::Write) -> CliResult {
     writeln!(output, "IDN: {}", device.idn()?)?;
     writeln!(output, "Serial Number: {}", device.serial_number()?)?;
     writeln!(output, "Core Version: {}", device.core_version()?)?;
     writeln!(output, "Spectrum Version: {}", device.spectrum_version()?)?;
-    writeln!(output, "Calibration Version: {}", device.calibration_version()?)?;
-    writeln!(output, "Calibration Date: {}", device.calibration_date()?)?;
+    let calibration = device.calibration()?;
+    writeln!(output, "Calibration Version: {}", calibration.version())?;
+    writeln!(output, "Calibration Date: {}", calibration.date())?;
     Ok(())
 }
 
@@ -15,40 +20,22 @@ pub fn info(device: &mut Sa430, output: &mut dyn std::io::Write) -> Result<(), B
 mod tests {
     use super::*;
 
-    use sa430::{
-        channel::fixtures::MockChannel,
-        frame::{self, Command},
-    };
+    use sa430::{frame::Command, test_utils::*};
 
     #[test]
     fn given_a_device_when_info_then_print_device_info() {
         let mut output = Vec::new();
 
         let mut channel = MockChannel::new();
-        channel.add_response(&frame::fixture::an_ack_response(Command::GetIdn).to_bytes());
-        channel.add_response(&frame::fixture::a_get_idn_response().to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::GetSerialNumber).to_bytes());
-        channel.add_response(&frame::fixture::a_get_serial_number_response().to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::GetCoreVersion).to_bytes());
-        channel.add_response(&frame::fixture::a_get_core_version_response().to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::GetSpectrumVersion).to_bytes());
-        channel.add_response(&frame::fixture::a_get_spectrum_version_response().to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::PROG_HEADER_DATA).to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::CALIBRATION_DATA_1).to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::CALIBRATION_DATA_2).to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::CALIBRATION_DATA_3).to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::CALIBRATION_DATA_4).to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::CALIBRATION_DATA_5).to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::CALIBRATION_DATA_6).to_bytes());
-        channel.add_response(&frame::fixture::an_ack_response(Command::FlashRead).to_bytes());
-        channel.add_response(&frame::fixture::a_read_flash_response(frame::fixture::CALIBRATION_DATA_7).to_bytes());
+        channel.add_response(&an_ack_response(Command::GetIdn));
+        channel.add_response(&a_get_idn_response());
+        channel.add_response(&an_ack_response(Command::GetSerialNumber));
+        channel.add_response(&a_get_serial_number_response());
+        channel.add_response(&an_ack_response(Command::GetCoreVersion));
+        channel.add_response(&a_get_core_version_response());
+        channel.add_response(&an_ack_response(Command::GetSpectrumVersion));
+        channel.add_response(&a_get_spectrum_version_response());
+        add_calibration_responses(&mut channel);
 
         let mut device = Sa430::new(Box::new(channel));
 
@@ -63,7 +50,7 @@ mod tests {
                 "Core Version: 2.10\n",
                 "Spectrum Version: 2.5\n",
                 "Calibration Version: 1.16\n",
-                "Calibration Date: Mo. Sep 19 2011\0\n"
+                "Calibration Date: Mo. Sep 19 2011\n"
             )
         );
     }
