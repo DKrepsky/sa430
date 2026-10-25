@@ -5,3 +5,6 @@ git_release_enable = false
 git_tag_enable = true
 # Tags look like `v0.1.2`, matching what cargo-dist expects.
 git_tag_name = "v{{ version }}"
+# Only these commits trigger a release: feat, fix, and breaking changes (`!` after the type/scope, or a
+# `BREAKING CHANGE:` footer). Other types (docs, ci, chore, test, ...) never open a release PR on their own.
+release_commits = '(?m)^((feat|fix)(\([^)]*\))?!?:|[a-z]+(\([^)]*\))?!:|BREAKING[ -]CHANGE:)'
