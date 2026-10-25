@@ -106,8 +106,8 @@ pub struct Calibration {
     /// Crystal frequency in Hz.
     pub xtal_freq_hz: u32,
 
-    /// Crystal frequency error in ppm.
-    pub xtal_freq_error_ppm: u16,
+    /// Crystal frequency error in ppm (signed).
+    pub xtal_freq_error_ppm: i16,
 
     /// Calibration temperature start.
     pub calibration_temperature_start: [u8; 6],
@@ -162,7 +162,7 @@ impl TryFrom<&[u8]> for Calibration {
         cal.hardware_id = parser.take_u32()?;
         cal.serial_number = parser.take_array()?;
         cal.xtal_freq_hz = parser.take_u32()?;
-        cal.xtal_freq_error_ppm = parser.take_u16()?;
+        cal.xtal_freq_error_ppm = parser.take_i16()?;
         cal.calibration_temperature_start = parser.take_array()?;
         cal.calibration_temperature_stop = parser.take_array()?;
 
@@ -324,6 +324,28 @@ mod tests {
         assert_eq!(calibration.date(), "Mo. Sep 19 2011");
         assert_eq!(calibration.hardware_id, 0x0908);
         assert_eq!(&calibration.serial_number, b"08FF41E50F8B3A34");
+        assert_eq!(calibration.xtal_freq_hz, 25_999_588);
+        assert_eq!(calibration.xtal_freq_error_ppm, 16);
+    }
+
+    #[test]
+    fn given_a_negative_xtal_error_when_parse_calibration_then_decode_as_signed() {
+        let mut data = [
+            CALIBRATION_DATA_1,
+            CALIBRATION_DATA_2,
+            CALIBRATION_DATA_3,
+            CALIBRATION_DATA_4,
+            CALIBRATION_DATA_5,
+            CALIBRATION_DATA_6,
+            CALIBRATION_DATA_7,
+        ]
+        .concat();
+        // xtal_freq_error_ppm sits at offset 97 of the calibration block.
+        data[97..99].copy_from_slice(&(-16i16).to_be_bytes());
+
+        let calibration = Calibration::try_from(data.as_slice()).unwrap();
+
+        assert_eq!(calibration.xtal_freq_error_ppm, -16);
     }
 
     #[test]

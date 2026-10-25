@@ -46,6 +46,11 @@ impl<'a> ByteArrayParser<'a> {
         Ok(u16::from_le_bytes(self.take_array()?))
     }
 
+    /// Takes two bytes and interprets them as a big-endian `i16`.
+    pub fn take_i16(&mut self) -> Result<i16> {
+        Ok(i16::from_be_bytes(self.take_array()?))
+    }
+
     /// Takes four bytes and interprets them as a big-endian `u32`.
     pub fn take_u32(&mut self) -> Result<u32> {
         Ok(u32::from_be_bytes(self.take_array()?))
@@ -107,6 +112,14 @@ mod tests {
         let mut parser = ByteArrayParser::new(&data);
 
         assert_eq!(parser.take_u16_le().unwrap(), 0x0201);
+    }
+
+    #[test]
+    fn given_a_buffer_when_take_i16_then_return_the_signed_i16() {
+        let data = vec![0xFF, 0xF0];
+        let mut parser = ByteArrayParser::new(&data);
+
+        assert_eq!(parser.take_i16().unwrap(), -16);
     }
 
     #[test]
