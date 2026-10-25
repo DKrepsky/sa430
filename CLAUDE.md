@@ -45,3 +45,9 @@ Adding a device command generally means: add the `Command` variant in `frame.rs`
 - Test names follow `given_..._when_..._then_...`.
 - Hardware is faked with `sa430::test_utils` (compiled only under `cfg(test)` or the `test-utils` feature). The crate enables that feature for its own tests through a self dev-dependency in `Cargo.toml`, which is how the binary's CLI tests can use it. `MockChannel::add_response(&Frame)` queues frames, and reading past the queue returns a `TimedOut` I/O error like a real port. Queue the ACK before each response (`an_ack_response(cmd)`), or use `add_calibration_responses` for the full calibration read.
 - Scanner and monitor have no hardware-free integration tests (see `NOTES.md`). Their pure logic (`scanner::to_sa430_port`, `linux::monitor::wait_readable`) is unit-tested.
+
+## Workflow
+
+- Every development task must have a GitHub issue. If the human does not provide one, ask whether you should create it before starting.
+- When writing issues, always use the templates in `.github/ISSUE_TEMPLATE/` (currently `feature_request.md`).
+- When development is finished, always open a pull request from a feature branch (never commit to `main`) and link the issue in the PR description with `Closes #<number>`, so the PR and the issue are connected.
