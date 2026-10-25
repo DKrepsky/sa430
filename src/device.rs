@@ -23,6 +23,9 @@ const FLASH_CALIBRATION_ADDR: u16 = 0xD40A;
 /// Size of the calibration data in flash memory.
 const FLASH_CALIBRATION_SIZE: u16 = 0x0687;
 
+/// Password the firmware requires as payload of [`Command::HardwareReset`].
+const HARDWARE_RESET_PASSWORD: [u8; 2] = [0xDE, 0xAD];
+
 /// A frequency range with start and stop frequencies and number of samples.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct FrequencyRange {
@@ -256,7 +259,7 @@ impl Sa430 {
 
     /// Performs a hardware reset.
     pub fn reboot(&mut self) -> Result<()> {
-        exec(self.channel.as_mut(), Command::HardwareReset)
+        exec_with_data(self.channel.as_mut(), Command::HardwareReset, &HARDWARE_RESET_PASSWORD)
     }
 
     /// Gets the device calibration data.

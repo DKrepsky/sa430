@@ -68,6 +68,12 @@ pub fn exec(channel: &mut dyn Channel, command: Command) -> Result<()> {
     Ok(())
 }
 
+/// Executes a command that carries `data` and has no result.
+pub fn exec_with_data(channel: &mut dyn Channel, command: Command, data: &[u8]) -> Result<()> {
+    transact(channel, &Frame::with_data(command, data)?, false)?;
+    Ok(())
+}
+
 /// Executes a command and returns the response payload.
 pub fn exec_with_result(channel: &mut dyn Channel, command: Command) -> Result<Vec<u8>> {
     let response = transact(channel, &Frame::new(command), true)?;
@@ -255,6 +261,16 @@ mod tests {
             ]
         );
         assert_eq!(result.len(), size as usize);
+    }
+
+    #[test]
+    fn given_a_command_and_data_when_exec_with_data_then_send_the_data_and_wait_for_ack() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::HardwareReset));
+
+        exec_with_data(&mut channel, Command::HardwareReset, &[0xDE, 0xAD]).unwrap();
+
+        assert_eq!(channel.write_buffer, vec![0x2A, 0x02, 0x03, 0xDE, 0xAD, 0xA7, 0x50]);
     }
 
     #[test]
