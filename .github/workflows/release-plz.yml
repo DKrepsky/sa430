@@ -18,11 +18,12 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: write
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
           # A tag pushed with the default GITHUB_TOKEN does not trigger other workflows, so a PAT is used
@@ -36,7 +37,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run release-plz release
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5
         with:
           command: release
         env:
@@ -46,12 +47,13 @@ jobs:
   release-pr:
     name: Release PR
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: write
       pull-requests: write
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PLZ_TOKEN }}
@@ -63,7 +65,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
       - name: Run release-plz release-pr
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5
         with:
           command: release-pr
         env:
