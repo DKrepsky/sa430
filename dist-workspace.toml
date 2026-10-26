@@ -15,6 +15,8 @@ targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-
 install-path = "CARGO_HOME"
 # Whether to install an updater program
 install-updater = false
+# The repo requires every action to be pinned to a full commit SHA, so override the tags dist uses.
+github-action-commits = { "actions/checkout" = "d23441a48e516b6c34aea4fa41551a30e30af803", "actions/upload-artifact" = "cf430e030ddbb5b0abf93d22962f4752f3646cd9", "actions/download-artifact" = "9000827ccba6bdab643e8b6fd33ac0654aef8333" }
 
 # The Linux build links against libudev.
 [dist.dependencies.apt]
