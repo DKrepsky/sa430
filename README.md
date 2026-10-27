@@ -98,6 +98,8 @@ fn main() -> sa430::Result<()> {
 All fallible functions return `sa430::Result<T>`; match on `sa430::Error` to tell apart I/O errors (including
 timeouts), corrupted frames, errors reported by the device and unsupported operations.
 
+A `Sa430` is `Send` (every `Channel` must be), so it can be moved to a worker thread.
+
 More examples can be found in the [examples](examples/) folder, such as scanning for devices and waiting for a device
 to be connected:
 

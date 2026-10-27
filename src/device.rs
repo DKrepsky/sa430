@@ -329,6 +329,18 @@ mod tests {
     }
 
     #[test]
+    fn given_a_device_when_moved_to_another_thread_then_it_can_be_used() {
+        let mut channel = MockChannel::new();
+        channel.add_response(&an_ack_response(Command::GetIdn));
+        channel.add_response(&a_get_idn_response());
+        let mut device = a_device_with(channel);
+
+        let idn = std::thread::spawn(move || device.idn()).join().unwrap();
+
+        assert!(idn.is_ok());
+    }
+
+    #[test]
     fn given_a_device_when_core_version_then_format_as_major_minor() {
         let mut channel = MockChannel::new();
         channel.add_response(&an_ack_response(Command::GetCoreVersion));
