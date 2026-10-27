@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/DKrepsky/sa430/compare/v0.1.3...v0.2.0) - 2026-10-27
+
+### Added
+
+- *(channel)* require Channel to be Send ([#66](https://github.com/DKrepsky/sa430/pull/66))
+- *(error)* expose SerialErrorKind without leaking serialport ([#67](https://github.com/DKrepsky/sa430/pull/67))
+
 ## [0.1.3](https://github.com/DKrepsky/sa430/compare/v0.1.2...v0.1.3) - 2026-10-26
 
 ### Other
