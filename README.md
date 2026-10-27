@@ -96,7 +96,18 @@ fn main() -> sa430::Result<()> {
 ```
 
 All fallible functions return `sa430::Result<T>`; match on `sa430::Error` to tell apart I/O errors (including
-timeouts), corrupted frames, errors reported by the device and unsupported operations.
+timeouts), serial port failures, corrupted frames, errors reported by the device and unsupported operations. For
+`Error::Serial`, `SerialError::kind()` returns a `SerialErrorKind` (`NoDevice`, `PermissionDenied`, ...), so you can
+react without depending on the `serialport` crate:
+
+```rust
+match Sa430::open("/dev/ttyACM0") {
+    Err(sa430::Error::Serial(e)) if e.kind() == sa430::SerialErrorKind::PermissionDenied => {
+        eprintln!("add your user to the dialout group");
+    }
+    other => { /* ... */ }
+}
+```
 
 More examples can be found in the [examples](examples/) folder, such as scanning for devices and waiting for a device
 to be connected:

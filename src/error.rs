@@ -17,7 +17,7 @@ pub enum Error {
     Io(io::Error),
 
     /// Failed to open or configure the serial port.
-    Serial(serialport::Error),
+    Serial(SerialError),
 
     /// A received frame is malformed.
     Frame(FrameError),
@@ -36,6 +36,62 @@ pub enum Error {
 
     /// The operation is not available on the current platform.
     Unsupported(&'static str),
+}
+
+/// Broad category of a [`SerialError`], so callers can react without depending on the serial port backend.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SerialErrorKind {
+    /// The port does not exist or the device was disconnected.
+    NoDevice,
+
+    /// The OS denied access to the port.
+    PermissionDenied,
+
+    /// The port settings or the port name are not valid.
+    InvalidInput,
+
+    /// Any other failure.
+    Other,
+}
+
+/// Failure to open or configure the serial port.
+#[derive(Debug)]
+pub struct SerialError {
+    kind: SerialErrorKind,
+    source: serialport::Error,
+}
+
+impl SerialError {
+    /// Returns the category of this failure.
+    pub fn kind(&self) -> SerialErrorKind {
+        self.kind
+    }
+}
+
+impl fmt::Display for SerialError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.source.fmt(f)
+    }
+}
+
+impl std::error::Error for SerialError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
+impl From<serialport::Error> for SerialError {
+    fn from(source: serialport::Error) -> Self {
+        let kind = match source.kind() {
+            serialport::ErrorKind::NoDevice => SerialErrorKind::NoDevice,
+            serialport::ErrorKind::InvalidInput => SerialErrorKind::InvalidInput,
+            serialport::ErrorKind::Io(io::ErrorKind::NotFound) => SerialErrorKind::NoDevice,
+            serialport::ErrorKind::Io(io::ErrorKind::PermissionDenied) => SerialErrorKind::PermissionDenied,
+            _ => SerialErrorKind::Other,
+        };
+        SerialError { kind, source }
+    }
 }
 
 impl fmt::Display for Error {
@@ -80,7 +136,7 @@ impl From<io::Error> for Error {
 
 impl From<serialport::Error> for Error {
     fn from(e: serialport::Error) -> Self {
-        Error::Serial(e)
+        Error::Serial(e.into())
     }
 }
 
@@ -104,6 +160,26 @@ mod tests {
             error.to_string(),
             "device error executing 'Get IDN': Unknown command (0x0324)"
         );
+    }
+
+    #[test]
+    fn given_serial_errors_when_converted_then_map_to_kind() {
+        let kind = |e: serialport::Error| SerialError::from(e).kind();
+        let io = |k| serialport::Error::new(serialport::ErrorKind::Io(k), "");
+        assert_eq!(
+            kind(serialport::Error::new(serialport::ErrorKind::NoDevice, "")),
+            SerialErrorKind::NoDevice
+        );
+        assert_eq!(kind(io(io::ErrorKind::NotFound)), SerialErrorKind::NoDevice);
+        assert_eq!(
+            kind(io(io::ErrorKind::PermissionDenied)),
+            SerialErrorKind::PermissionDenied
+        );
+        assert_eq!(
+            kind(serialport::Error::new(serialport::ErrorKind::InvalidInput, "")),
+            SerialErrorKind::InvalidInput
+        );
+        assert_eq!(kind(io(io::ErrorKind::TimedOut)), SerialErrorKind::Other);
     }
 
     #[test]

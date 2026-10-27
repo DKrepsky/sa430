@@ -36,7 +36,7 @@ pub(crate) mod protocol;
 pub(crate) mod linux;
 
 pub use device::Sa430;
-pub use error::{Error, Result};
+pub use error::{Error, Result, SerialError, SerialErrorKind};
 pub use monitor::{Event, EventHandler, Monitor};
 pub use port::Port;
 pub use scanner::Scanner;
