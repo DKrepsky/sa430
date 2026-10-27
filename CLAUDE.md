@@ -29,7 +29,7 @@ CI runs tests on Linux, Windows and macOS, so non-Linux code paths must compile.
 
 Layered, from hardware up:
 
-- **`channel.rs`**: `Channel` is a marker trait with a blanket impl for every `Read + Write` type. `SerialPortChannel` opens the port with the device's fixed settings (926100 baud, 8N1, 5 s timeout) and clears stale input on open.
+- **`channel.rs`**: `Channel` is a marker trait with a blanket impl for every `Read + Write + Send` type (`Send` lets `Sa430` move to a worker thread). `SerialPortChannel` opens the port with the device's fixed settings (926100 baud, 8N1, 5 s timeout) and clears stale input on open.
 - **`frame.rs`**: `Frame` (magic `0x2A`, length, `Command`, ≤255 data bytes, big-endian CRC16 from `crc.rs`), plus the `Command`/`ErrorCode` enums. `Frame::with_data` is fallible and enforces the 255-byte limit, so `to_bytes` can't truncate.
 - **`protocol.rs`** (crate-private): every command is answered with an **ACK frame** first, then (for commands with results) a **response frame**. `transact` validates both: an error frame becomes `Error::Device`, and a mismatched command becomes `Error::UnexpectedResponse`. `read_flash` splits reads into ≤255-byte chunks, rejects short responses and truncates padded ones.
 - **`parser.rs`** (crate-private): `ByteArrayParser`, a bounds-checked cursor (big-endian by default, plus `take_u16_le` for the little-endian flash `ProgHeader`).

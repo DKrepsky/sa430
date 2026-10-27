@@ -109,6 +109,8 @@ match Sa430::open("/dev/ttyACM0") {
 }
 ```
 
+A `Sa430` is `Send` (every `Channel` must be), so it can be moved to a worker thread.
+
 More examples can be found in the [examples](examples/) folder, such as scanning for devices and waiting for a device
 to be connected:
 

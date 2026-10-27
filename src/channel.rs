@@ -40,9 +40,11 @@ const SERIAL_PORT_FLOW_CONTROL: FlowControl = FlowControl::None;
 const SERIAL_PORT_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// A bidirectional, blocking byte stream connected to a device.
-pub trait Channel: io::Read + io::Write {}
+///
+/// Channels are `Send` so a [`Sa430`](crate::Sa430) can be moved to a worker thread.
+pub trait Channel: io::Read + io::Write + Send {}
 
-impl<T: io::Read + io::Write + ?Sized> Channel for T {}
+impl<T: io::Read + io::Write + Send + ?Sized> Channel for T {}
 
 /// A [`Channel`] backed by a serial port configured for the SA430.
 pub struct SerialPortChannel {
