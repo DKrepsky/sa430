@@ -20,6 +20,20 @@ The device connects through USB as a serial port, identified by the vendor ID (V
 
 **Table 1:** Serial port settings.
 
+### Settle time after enumeration
+
+The device needs a short settle time after the USB serial port appears, whether it was plugged in or rebooted with
+`CMD_HARDWARE_RESET`. The library waits `DEFAULT_SETTLE_DELAY` (200 ms) after opening the port, before it discards
+stale input and sends the first frame (`SerialPortChannel::with_settle` changes the delay).
+
+Measured on a real SA430 (USB serial 08FF41E50F8B3A34) after a re-enumeration:
+
+- A frame written within about 20 ms of opening the port is corrupted by the device. The first command
+  (`Send address and size, get flash content`) fails with `No frame start` (0x032D).
+- After that the device stays one reply behind. The next request gets no answer and times out after the read timeout.
+- Waits of 5, 10, 20, 100 and 300 ms after opening, before the first write, always worked. Re-opening a port that was
+  already up needs no wait.
+
  Although hardware control is enabled, there is no evidence of its usage.
 
 TI's driver opens the port with a 1000 ms read timeout. On top of that, it waits up to 100 ms for each ACK and response
