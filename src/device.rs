@@ -229,6 +229,9 @@ impl Sa430 {
     }
 
     /// Opens the device connected to serial port `port_name`.
+    ///
+    /// Waits [`DEFAULT_SETTLE_DELAY`](crate::channel::DEFAULT_SETTLE_DELAY) after opening so a freshly enumerated
+    /// device is ready for the first command. Use [`SerialPortChannel::with_settle`] with [`Sa430::new`] to change it.
     pub fn open(port_name: &str) -> Result<Self> {
         Ok(Self::new(Box::new(SerialPortChannel::new(port_name)?)))
     }

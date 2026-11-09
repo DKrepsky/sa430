@@ -67,6 +67,19 @@ impl SerialError {
     pub fn kind(&self) -> SerialErrorKind {
         self.kind
     }
+
+    /// Builds a serial error of `kind` with `message`, so code that handles serial failures can be tested without a
+    /// port. `kind()` of the result returns `kind`.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn new(kind: SerialErrorKind, message: impl Into<String>) -> Self {
+        let backend_kind = match kind {
+            SerialErrorKind::NoDevice => serialport::ErrorKind::NoDevice,
+            SerialErrorKind::PermissionDenied => serialport::ErrorKind::Io(io::ErrorKind::PermissionDenied),
+            SerialErrorKind::InvalidInput => serialport::ErrorKind::InvalidInput,
+            SerialErrorKind::Other => serialport::ErrorKind::Io(io::ErrorKind::Other),
+        };
+        SerialError::from(serialport::Error::new(backend_kind, message))
+    }
 }
 
 impl fmt::Display for SerialError {
@@ -180,6 +193,26 @@ mod tests {
             SerialErrorKind::InvalidInput
         );
         assert_eq!(kind(io(io::ErrorKind::TimedOut)), SerialErrorKind::Other);
+    }
+
+    #[test]
+    fn given_a_kind_when_build_serial_error_then_kind_round_trips() {
+        for kind in [
+            SerialErrorKind::NoDevice,
+            SerialErrorKind::PermissionDenied,
+            SerialErrorKind::InvalidInput,
+            SerialErrorKind::Other,
+        ] {
+            let error = SerialError::new(kind, "port is busy");
+            assert_eq!(error.kind(), kind);
+            assert_eq!(error.to_string(), "port is busy");
+        }
+    }
+
+    #[test]
+    fn given_a_serial_error_when_wrapped_then_display_names_serial_port() {
+        let error = Error::Serial(SerialError::new(SerialErrorKind::PermissionDenied, "access denied"));
+        assert_eq!(error.to_string(), "serial port error: access denied");
     }
 
     #[test]

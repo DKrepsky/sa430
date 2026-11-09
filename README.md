@@ -95,6 +95,23 @@ fn main() -> sa430::Result<()> {
 }
 ```
 
+A device that was just plugged in or rebooted needs a moment before it accepts commands. `Sa430::open` and
+`SerialPortChannel::new` wait 200 ms after opening the port. To change that wait, or to change the 5 s read timeout,
+use `SerialPortChannel` directly:
+
+```rust
+use std::time::Duration;
+use sa430::{channel::SerialPortChannel, Sa430};
+
+fn main() -> sa430::Result<()> {
+    let mut channel = SerialPortChannel::with_settle("/dev/ttyACM0", Duration::from_millis(300))?;
+    channel.set_timeout(Duration::from_secs(1))?;
+    let mut device = Sa430::new(Box::new(channel));
+    println!("{}", device.idn()?);
+    Ok(())
+}
+```
+
 All fallible functions return `sa430::Result<T>`; match on `sa430::Error` to tell apart I/O errors (including
 timeouts), serial port failures, corrupted frames, errors reported by the device and unsupported operations. For
 `Error::Serial`, `SerialError::kind()` returns a `SerialErrorKind` (`NoDevice`, `PermissionDenied`, ...), so you can
