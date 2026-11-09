@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/DKrepsky/sa430/compare/v0.2.0...v0.2.1) - 2026-11-09
+
+### Added
+
+- *(channel)* settle delay on open and configurable read timeout ([#71](https://github.com/DKrepsky/sa430/pull/71))
+
+### Other
+
+- *(deps)* bump release-plz/action from 0.5.146 to 0.5.147 ([#69](https://github.com/DKrepsky/sa430/pull/69))
+
 ## [0.2.0](https://github.com/DKrepsky/sa430/compare/v0.1.3...v0.2.0) - 2026-10-27
 
 ### Added
