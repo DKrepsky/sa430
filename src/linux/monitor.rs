@@ -94,7 +94,22 @@ struct Wakeup {
     stop: bool,
 }
 
-/// Blocks until `device` or `stop` is readable, and reports which one.
+/// `revents` bits that mean the udev socket is broken rather than readable. A broken socket keeps `poll` returning
+/// at once with nothing to read, so `run` would spin on it.
+const DEVICE_ERROR_EVENTS: libc::c_short = libc::POLLERR | libc::POLLNVAL | libc::POLLHUP;
+
+/// Fails if the device fd reported an error condition in `revents`.
+fn check_device_revents(revents: libc::c_short) -> io::Result<()> {
+    if revents & DEVICE_ERROR_EVENTS == 0 {
+        return Ok(());
+    }
+    Err(io::Error::other(format!(
+        "udev monitor socket failed (poll revents {:#06x})",
+        revents as u16
+    )))
+}
+
+/// Blocks until `device` or `stop` is readable, and reports which one. Fails if `device` is in an error state.
 fn wait_readable(device: &impl AsRawFd, stop: &impl AsRawFd) -> io::Result<Wakeup> {
     let mut pollfds = [
         libc::pollfd {
@@ -113,6 +128,7 @@ fn wait_readable(device: &impl AsRawFd, stop: &impl AsRawFd) -> io::Result<Wakeu
         // SAFETY: `pollfds` is a valid, initialized array of two elements that outlives the call.
         let result = unsafe { libc::poll(pollfds.as_mut_ptr(), pollfds.len() as libc::nfds_t, -1) };
         if result >= 0 {
+            check_device_revents(pollfds[0].revents)?;
             return Ok(Wakeup {
                 device: pollfds[0].revents != 0,
                 stop: pollfds[1].revents != 0,
@@ -241,6 +257,39 @@ mod tests {
 
         assert!(result.is_ok());
         assert!(started.elapsed() < PROMPT, "run took {:?} to return", started.elapsed());
+    }
+
+    #[test]
+    fn given_device_error_flags_when_check_device_revents_then_return_err() {
+        for revents in [
+            libc::POLLERR,
+            libc::POLLNVAL,
+            libc::POLLHUP,
+            libc::POLLIN | libc::POLLHUP,
+            libc::POLLIN | libc::POLLERR,
+        ] {
+            assert!(check_device_revents(revents).is_err(), "revents {revents:#x}");
+        }
+    }
+
+    #[test]
+    fn given_no_error_flags_when_check_device_revents_then_return_ok() {
+        for revents in [0, libc::POLLIN, libc::POLLOUT] {
+            assert!(check_device_revents(revents).is_ok(), "revents {revents:#x}");
+        }
+    }
+
+    #[test]
+    fn given_peer_closed_when_wait_readable_then_return_err_instead_of_spinning() {
+        let monitor = LinuxMonitor::new().unwrap();
+        let (reader, writer) = UnixStream::pair().unwrap();
+        drop(writer);
+
+        let started = Instant::now();
+        let result = wait_readable(&reader, stop_fd_of(&monitor).as_ref());
+
+        assert!(result.is_err(), "expected an error, got {result:?}");
+        assert!(started.elapsed() < PROMPT);
     }
 
     #[test]
