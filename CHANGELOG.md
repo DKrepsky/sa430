@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/DKrepsky/sa430/compare/v0.2.1...v0.2.2) - 2026-11-16
+
+### Added
+
+- make Monitor stoppable from another thread ([#77](https://github.com/DKrepsky/sa430/pull/77))
+
+### Fixed
+
+- fail instead of spinning when the udev socket errors ([#79](https://github.com/DKrepsky/sa430/pull/79))
+
+### Other
+
+- *(deps)* bump release-plz/action from 0.5.147 to 0.5.148 ([#75](https://github.com/DKrepsky/sa430/pull/75))
+- build aarch64-apple-darwin on macos-15 ([#74](https://github.com/DKrepsky/sa430/pull/74))
+
 ## [0.2.1](https://github.com/DKrepsky/sa430/compare/v0.2.0...v0.2.1) - 2026-11-09
 
 ### Added
