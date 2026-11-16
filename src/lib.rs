@@ -37,7 +37,7 @@ pub(crate) mod linux;
 
 pub use device::Sa430;
 pub use error::{Error, Result, SerialError, SerialErrorKind};
-pub use monitor::{Event, EventHandler, Monitor};
+pub use monitor::{Event, EventHandler, Monitor, MonitorStopHandle};
 pub use port::Port;
 pub use scanner::Scanner;
 pub use spectrum::{Measurement, SweepRequest};
@@ -56,12 +56,15 @@ pub fn create_scanner() -> Box<dyn Scanner> {
 
 /// Creates a connect/disconnect monitor for the current OS.
 ///
+/// The monitor is `Send`, so it can be moved to a worker thread that calls `run`.
+///
 /// # Errors
 ///
-/// Returns [`Error::Unsupported`] on platforms other than Linux.
-pub fn create_monitor() -> Result<Box<dyn Monitor>> {
+/// Returns [`Error::Unsupported`] on platforms other than Linux, and [`Error::Io`] if the monitor's internal stop
+/// descriptor cannot be created.
+pub fn create_monitor() -> Result<Box<dyn Monitor + Send>> {
     #[cfg(target_os = "linux")]
-    return Ok(Box::new(linux::monitor::LinuxMonitor::new()));
+    return Ok(Box::new(linux::monitor::LinuxMonitor::new()?));
 
     #[cfg(not(target_os = "linux"))]
     return Err(Error::Unsupported("device monitoring"));

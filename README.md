@@ -136,6 +136,19 @@ cargo run --example scan
 cargo run --example watch
 ```
 
+`create_monitor()` returns a monitor that is `Send`. To stop a blocked `run` from another thread, take a
+`MonitorStopHandle` with `stop_handle()` before calling `run`, then call `stop()` on it (or on a clone). `run` then
+returns `Ok(())`:
+
+```rust
+let mut monitor = sa430::create_monitor()?;
+let stop = monitor.stop_handle().expect("this monitor can be stopped");
+let worker = std::thread::spawn(move || monitor.run(&mut |_: &sa430::Event| std::ops::ControlFlow::Continue(())));
+
+stop.stop();
+worker.join().expect("monitor thread panicked")?;
+```
+
 ### Testing code that uses this library
 
 Enable the `test-utils` feature in your `dev-dependencies` to get `sa430::test_utils::MockChannel` and canned device
